@@ -890,8 +890,8 @@
         // Cloudinary Configuration
         const cloudinaryConfig = {
             cloudName: 'dknfb4ncn',
-            apiKey: '896817262642923',
-            uploadPreset: 'dby0k7n'
+            apiKey: '825272128437676',
+            uploadPreset: 'dby0k7n' // Make sure this is an UNSIGNED preset
         };
 
         // Import Firebase modules from CDN
@@ -1012,7 +1012,7 @@
         // --- FIREBASE & AUTHENTICATION ---
         async function initializeFirebase() {
             try {
-                if (!firebaseConfig || !firebaseConfig.apiKey) {
+                if (!firebaseConfig || firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
                     modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
                     return;
                 }
@@ -1104,7 +1104,6 @@
             });
         }
 
-        // FIXED: Improved error handling to show specific Cloudinary error messages.
         async function uploadImagesToCloudinary(files) {
             const uploadPromises = files.map(file => {
                 const formData = new FormData();
@@ -1117,7 +1116,6 @@
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // If response is not ok, parse the error JSON from Cloudinary
                         return response.json().then(err => { throw new Error(err.error.message); });
                     }
                     return response.json();
@@ -1126,15 +1124,13 @@
                     if (data.secure_url) {
                         return data.secure_url;
                     } else {
-                        console.error("Cloudinary upload failed with unexpected data structure:", data);
-                        throw new Error('תגובה לא צפויה מ-Cloudinary');
+                        throw new Error('Cloudinary upload failed with unexpected data structure');
                     }
                 });
             });
             return Promise.all(uploadPromises);
         }
 
-        // FIXED: Simplified logic and improved error handling.
         async function saveItem(itemData, files) {
             if (!db || !state.isAuthenticated || !state.user) {
                 modals.showAlert("You must be logged in to save items.", "Error");
@@ -1164,7 +1160,7 @@
                 } else {
                     if (!itemToSave.images || itemToSave.images.length === 0) {
                         modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
-                        modals.close('loading-modal'); // Close loading modal on validation failure
+                        modals.close('loading-modal');
                         return; 
                     }
                     itemToSave.createdAt = serverTimestamp();
@@ -1207,7 +1203,6 @@
                 await updateDoc(itemRef, {
                     likes: userLiked ? arrayRemove(state.user.uid) : arrayUnion(state.user.uid)
                 });
-                // Create notification on like
                 if (!userLiked && item.ownerId !== state.user.uid) {
                     createNotification(
                         item.ownerId,
@@ -1333,7 +1328,6 @@
                 senderId: state.user.uid,
                 timestamp: serverTimestamp()
             });
-             // Notify the other user
             const convo = state.conversations.find(c => c.id === conversationId);
             if (convo) {
                 const otherParticipantId = Object.keys(convo.participants).find(id => id !== state.user.uid);
