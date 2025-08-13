@@ -772,13 +772,19 @@
             appId: "1:747252196826:web:41b5ea1eadbbe0049f0ce3",
             measurementId: "G-RQH5E5H8JD"
         };
+        
+        // Cloudinary Configuration
+        const cloudinaryConfig = {
+            cloudName: 'dknfb4ncn',
+            apiKey: '896817262642923',
+            uploadPreset: 'dby0k7n'
+        };
 
         // Import Firebase modules from CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-
+        
         const ADMIN_EMAIL = "ohadf1976@gmail.com";
 
         // DOM element selectors
@@ -811,7 +817,7 @@
         };
 
         // Firebase instances
-        let app, auth, db, storage;
+        let app, auth, db;
 
         // --- UTILITY FUNCTIONS ---
         function formatTimeAgo(timestamp) {
@@ -887,7 +893,6 @@
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                storage = getStorage(app);
                 console.log("Firebase Initialized");
                 setupAuthObserver();
             } catch (e) {
@@ -968,12 +973,25 @@
             });
         }
 
-        async function uploadImages(files) {
-            if (!storage || !state.user) return [];
+        async function uploadImagesToCloudinary(files) {
             const uploadPromises = files.map(file => {
-                const filePath = `items/${state.user.uid}/${Date.now()}_${file.name}`;
-                const storageRef = ref(storage, filePath);
-                return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+                formData.append('api_key', cloudinaryConfig.apiKey);
+                
+                return fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.secure_url) {
+                        return data.secure_url;
+                    } else {
+                        throw new Error('Cloudinary upload failed');
+                    }
+                });
             });
             return Promise.all(uploadPromises);
         }
@@ -985,7 +1003,7 @@
             
             modals.showAlert("מעלה תמונות ושומר פריט...", "נא להמתין");
             
-            const imageUrls = await uploadImages(files);
+            const imageUrls = await uploadImagesToCloudinary(files);
             if (files.length > 0 && imageUrls.length === 0) {
                 return modals.showAlert("העלאת התמונות נכשלה.", "שגיאה");
             }
