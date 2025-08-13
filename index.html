@@ -1316,8 +1316,18 @@
                     </div>
                 `;
                 card.appendChild(content);
-                
+
+                const header = card.querySelector('.feed-item-header');
                 const controlsContainer = card.querySelector('.item-controls');
+
+                if (state.isAuthenticated && state.user.uid !== item.ownerId) {
+                    const reportBtn = document.createElement('button');
+                    reportBtn.className = 'report-button';
+                    reportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+                    reportBtn.onclick = (e) => { e.stopPropagation(); reportItem(item); };
+                    header.appendChild(reportBtn);
+                }
+
                  if (item.affiliateLink) {
                     const buyBtn = document.createElement('a');
                     buyBtn.href = item.affiliateLink;
