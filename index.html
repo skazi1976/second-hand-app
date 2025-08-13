@@ -191,10 +191,10 @@
             align-items: center;
         }
         
-        .item-controls button, .item-controls a {
+        .item-controls .btn {
             width: auto;
             padding: 8px 12px;
-            margin-right: 10px;
+            margin: 0;
             text-decoration: none;
             color: white;
             border-radius: 5px;
@@ -202,6 +202,8 @@
             align-items: center;
             justify-content: center;
         }
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-danger { background-color: var(--danger-color); }
         .whatsapp-btn {
             background-color: var(--whatsapp-color);
         }
@@ -1245,16 +1247,17 @@
                     const buyBtn = document.createElement('a');
                     buyBtn.href = item.affiliateLink;
                     buyBtn.target = "_blank";
-                    buyBtn.className = "buy-btn";
+                    buyBtn.className = "buy-btn btn";
                     buyBtn.textContent = "לרכישה";
                     controlsContainer.appendChild(buyBtn);
                 } else if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
+                    editBtn.className = "btn btn-primary";
                     editBtn.textContent = 'ערוך';
                     editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
                     const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "btn btn-danger";
                     deleteBtn.textContent = 'מחק';
-                    deleteBtn.style.backgroundColor = 'var(--danger-color)';
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
                     controlsContainer.appendChild(editBtn);
                     controlsContainer.appendChild(deleteBtn);
@@ -1263,11 +1266,12 @@
                         const whatsappBtn = document.createElement('a');
                         whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
                         whatsappBtn.target = "_blank";
-                        whatsappBtn.className = "whatsapp-btn";
+                        whatsappBtn.className = "whatsapp-btn btn";
                         whatsappBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M16.75,13.96C17,14.26 17.25,14.81 17.3,15.06C17.35,15.31 17.3,15.5 17.3,15.55C17.3,15.85 17.15,16.24 16.88,16.46C16.63,16.66 16.24,16.84 15.69,16.96C15.14,17.11 14.49,17.21 12.27,16.29C9.48,15.11 7.5,12.82 7.29,12.52C7.08,12.22 6,10.76 6,9.22C6,7.68 6.95,6.73 7.24,6.43C7.54,6.14 7.92,6.04 8.21,6.04C8.36,6.04 8.5,6.04 8.63,6.04C8.88,6.04 9,6.16 9.16,6.5C9.33,6.83 9.73,7.82 9.83,7.97C9.93,8.12 10,8.22 9.93,8.37C9.85,8.52 9.73,8.64 9.61,8.76C9.48,8.88 9.36,9 9.24,9.12C9.12,9.24 9,9.36 9.12,9.58C9.25,9.81 9.73,10.59 10.45,11.23C11.33,12.03 12.13,12.4 12.38,12.58C12.63,12.75 12.78,12.73 12.94,12.58C13.1,12.43 13.28,12.11 13.43,11.91C13.59,11.71 13.89,11.64 14.19,11.76C14.49,11.89 15.93,12.62 16.23,12.77C16.53,12.92 16.68,13 16.73,13.12C16.78,13.24 16.75,13.66 16.75,13.96M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22C13.66,22 15.25,21.54 16.63,20.72L22,22L20.72,16.63C21.54,15.25 22,13.66 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.54 19.5,15 18.65,16.24L19.53,19.53L16.24,18.65C15,19.5 13.54,20 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"></path></svg>`;
                         controlsContainer.appendChild(whatsappBtn);
                     }
                     const contactBtn = document.createElement('button');
+                    contactBtn.className = "btn btn-primary";
                     contactBtn.textContent = 'הודעה';
                     contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
                     controlsContainer.appendChild(contactBtn);
@@ -1323,7 +1327,7 @@
                 if (state.isAuthenticated && state.user.uid !== item.ownerId) {
                     const reportBtn = document.createElement('button');
                     reportBtn.className = 'report-button';
-                    reportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+                    reportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
                     reportBtn.onclick = (e) => { e.stopPropagation(); reportItem(item); };
                     header.appendChild(reportBtn);
                 }
@@ -1332,16 +1336,17 @@
                     const buyBtn = document.createElement('a');
                     buyBtn.href = item.affiliateLink;
                     buyBtn.target = "_blank";
-                    buyBtn.className = "buy-btn";
+                    buyBtn.className = "buy-btn btn";
                     buyBtn.textContent = "לרכישה";
                     controlsContainer.appendChild(buyBtn);
                 } else if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
+                    editBtn.className = "btn btn-primary";
                     editBtn.textContent = 'ערוך';
                     editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
                     const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "btn btn-danger";
                     deleteBtn.textContent = 'מחק';
-                    deleteBtn.style.backgroundColor = 'var(--danger-color)';
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
                     controlsContainer.appendChild(editBtn);
                     controlsContainer.appendChild(deleteBtn);
@@ -1350,11 +1355,12 @@
                         const whatsappBtn = document.createElement('a');
                         whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
                         whatsappBtn.target = "_blank";
-                        whatsappBtn.className = "whatsapp-btn";
+                        whatsappBtn.className = "whatsapp-btn btn";
                         whatsappBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M16.75,13.96C17,14.26 17.25,14.81 17.3,15.06C17.35,15.31 17.3,15.5 17.3,15.55C17.3,15.85 17.15,16.24 16.88,16.46C16.63,16.66 16.24,16.84 15.69,16.96C15.14,17.11 14.49,17.21 12.27,16.29C9.48,15.11 7.5,12.82 7.29,12.52C7.08,12.22 6,10.76 6,9.22C6,7.68 6.95,6.73 7.24,6.43C7.54,6.14 7.92,6.04 8.21,6.04C8.36,6.04 8.5,6.04 8.63,6.04C8.88,6.04 9,6.16 9.16,6.5C9.33,6.83 9.73,7.82 9.83,7.97C9.93,8.12 10,8.22 9.93,8.37C9.85,8.52 9.73,8.64 9.61,8.76C9.48,8.88 9.36,9 9.24,9.12C9.12,9.24 9,9.36 9.12,9.58C9.25,9.81 9.73,10.59 10.45,11.23C11.33,12.03 12.13,12.4 12.38,12.58C12.63,12.75 12.78,12.73 12.94,12.58C13.1,12.43 13.28,12.11 13.43,11.91C13.59,11.71 13.89,11.64 14.19,11.76C14.49,11.89 15.93,12.62 16.23,12.77C16.53,12.92 16.68,13 16.73,13.12C16.78,13.24 16.75,13.66 16.75,13.96M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22C13.66,22 15.25,21.54 16.63,20.72L22,22L20.72,16.63C21.54,15.25 22,13.66 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.54 19.5,15 18.65,16.24L19.53,19.53L16.24,18.65C15,19.5 13.54,20 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"></path></svg>`;
                         controlsContainer.appendChild(whatsappBtn);
                     }
                     const contactBtn = document.createElement('button');
+                    contactBtn.className = "btn btn-primary";
                     contactBtn.textContent = 'הודעה';
                     contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
                     controlsContainer.appendChild(contactBtn);
