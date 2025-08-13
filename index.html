@@ -320,11 +320,25 @@
         #auth-container {
             flex: 1 0 auto;
             text-align: left;
+            display: flex;
+            align-items: center;
         }
         
         #auth-container button {
              margin: 5px;
              padding: 10px 15px;
+        }
+
+        #messages-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+        }
+        #messages-btn svg {
+            width: 28px;
+            height: 28px;
+            stroke: white;
         }
 
         #user-info {
@@ -378,6 +392,65 @@
         .page-content {
             max-height: 60vh;
             overflow-y: auto;
+        }
+
+        /* Messaging Styles */
+        .conversation-list-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .conversation-list-item:hover {
+            background-color: #f9f9f9;
+        }
+        .conversation-list-item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-left: 15px;
+        }
+        .conversation-details {
+            flex-grow: 1;
+        }
+        .conversation-details strong {
+            display: block;
+        }
+        #chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .message {
+            padding: 8px 12px;
+            border-radius: 18px;
+            margin-bottom: 5px;
+            max-width: 70%;
+        }
+        .message.sent {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+        }
+        .message.received {
+            background-color: #ecf0f1;
+            align-self: flex-start;
+        }
+        #chat-form {
+            display: flex;
+        }
+        #chat-input {
+            flex-grow: 1;
+            margin-top: 0;
+        }
+        #chat-form button {
+            margin-top: 0;
+            margin-right: 10px;
         }
 
         /* Mobile Responsiveness */
@@ -478,6 +551,27 @@
         </div>
     </div>
 
+    <!-- NEW: Messages and Chat Modals -->
+    <div id="messages-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="messages-modal">&times;</span>
+            <h2>תיבת דואר נכנס</h2>
+            <div id="conversations-list"></div>
+        </div>
+    </div>
+
+    <div id="chat-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="chat-modal">&times;</span>
+            <h2 id="chat-with-name">שיחה עם...</h2>
+            <div id="chat-messages"></div>
+            <form id="chat-form">
+                <input type="text" id="chat-input" placeholder="כתוב הודעה..." required>
+                <button type="submit">שלח</button>
+            </form>
+        </div>
+    </div>
+
     <div id="alert-modal" class="modal">
         <div class="modal-content">
             <span class="close-button" data-modal-id="alert-modal">&times;</span>
@@ -548,7 +642,7 @@
         // Import Firebase modules from CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // DOM element selectors
         const a = (selector) => document.querySelector(selector);
@@ -559,9 +653,10 @@
             user: null,
             items: [],
             sellers: [], 
+            conversations: [],
             isAuthenticated: false,
-            viewMode: 'feed', // Default to feed view
-            filter: { type: 'all', term: '' }, // type can be 'all', 'search', 'my_items', 'all_sellers', 'by_seller'
+            viewMode: 'feed', 
+            filter: { type: 'all', term: '' },
             listeners: {},
             onChange(key, callback) {
                 if (!this.listeners[key]) this.listeners[key] = [];
@@ -645,6 +740,7 @@
                     const { uid, displayName, email, photoURL } = user;
                     state.update('user', { uid, displayName, email, photoURL });
                     state.update('isAuthenticated', true);
+                    fetchConversations();
                 } else {
                     state.update('user', null);
                     state.update('isAuthenticated', false);
@@ -750,6 +846,80 @@
             });
         }
 
+        // --- MESSAGING ---
+        let unsubscribeFromConversations;
+        function fetchConversations() {
+            if (!db || !state.user) return;
+            if (unsubscribeFromConversations) unsubscribeFromConversations();
+
+            const q = query(collection(db, "conversations"), where(`participants.${state.user.uid}`, "==", true));
+            unsubscribeFromConversations = onSnapshot(q, (snapshot) => {
+                const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                state.update('conversations', conversations);
+            });
+        }
+
+        let unsubscribeFromMessages;
+        function openChat(conversation) {
+            if (unsubscribeFromMessages) unsubscribeFromMessages();
+
+            const otherParticipantId = Object.keys(conversation.participants).find(id => id !== state.user.uid);
+            const otherParticipant = conversation.participantDetails[otherParticipantId];
+            
+            a('#chat-with-name').textContent = `שיחה עם ${otherParticipant.name}`;
+            a('#chat-modal').dataset.conversationId = conversation.id;
+            modals.open('chat-modal');
+
+            const messagesContainer = a('#chat-messages');
+            messagesContainer.innerHTML = '';
+
+            const q = query(collection(db, `conversations/${conversation.id}/messages`), orderBy("timestamp", "asc"));
+            unsubscribeFromMessages = onSnapshot(q, (snapshot) => {
+                messagesContainer.innerHTML = '';
+                snapshot.docs.forEach(doc => {
+                    const message = doc.data();
+                    const messageEl = document.createElement('div');
+                    messageEl.className = `message ${message.senderId === state.user.uid ? 'sent' : 'received'}`;
+                    messageEl.textContent = message.text;
+                    messagesContainer.prepend(messageEl);
+                });
+            });
+        }
+
+        async function sendMessage(conversationId, text) {
+            if (!db || !state.user) return;
+            const messagesCol = collection(db, `conversations/${conversationId}/messages`);
+            await addDoc(messagesCol, {
+                text,
+                senderId: state.user.uid,
+                timestamp: serverTimestamp()
+            });
+        }
+
+        async function startOrGetConversation(item) {
+            if (!db || !state.user) return modals.open('auth-modal');
+
+            const conversationId = [state.user.uid, item.ownerId].sort().join('_') + `_${item.id}`;
+            const conversationRef = doc(db, "conversations", conversationId);
+            
+            const participants = { [state.user.uid]: true, [item.ownerId]: true };
+            const participantDetails = {
+                [state.user.uid]: { name: state.user.displayName, photo: state.user.photoURL },
+                [item.ownerId]: { name: item.ownerName, photo: item.ownerPhoto }
+            };
+
+            await setDoc(conversationRef, {
+                participants,
+                participantDetails,
+                itemId: item.id,
+                itemTitle: item.title,
+                itemImage: item.image
+            }, { merge: true });
+            
+            openChat({ id: conversationId, participants, participantDetails });
+        }
+
+
         // --- UI COMPONENTS & RENDERING ---
         const components = {
             itemCard(item) {
@@ -764,9 +934,9 @@
                         <p><strong>מחיר:</strong> ₪${item.price}</p>
                     </div>
                 `;
+                const controls = document.createElement('div');
+                controls.className = 'item-controls';
                 if (state.isAuthenticated && state.user.uid === item.ownerId) {
-                    const controls = document.createElement('div');
-                    controls.className = 'item-controls';
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'ערוך';
                     editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
@@ -776,8 +946,13 @@
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
                     controls.appendChild(editBtn);
                     controls.appendChild(deleteBtn);
-                    card.appendChild(controls);
+                } else if (state.isAuthenticated) {
+                    const contactBtn = document.createElement('button');
+                    contactBtn.textContent = 'צור קשר עם המוכר';
+                    contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
+                    controls.appendChild(contactBtn);
                 }
+                card.appendChild(controls);
                 return card;
             },
             feedItemCard(item) {
@@ -796,9 +971,9 @@
                         <p><strong>מחיר:</strong> ₪${item.price}</p>
                     </div>
                 `;
+                const controls = document.createElement('div');
+                controls.className = 'item-controls';
                  if (state.isAuthenticated && state.user.uid === item.ownerId) {
-                    const controls = document.createElement('div');
-                    controls.className = 'item-controls';
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'ערוך';
                     editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
@@ -808,8 +983,13 @@
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
                     controls.appendChild(editBtn);
                     controls.appendChild(deleteBtn);
-                    card.querySelector('.feed-item-content').appendChild(controls);
+                } else if (state.isAuthenticated) {
+                    const contactBtn = document.createElement('button');
+                    contactBtn.textContent = 'צור קשר עם המוכר';
+                    contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
+                    controls.appendChild(contactBtn);
                 }
+                card.querySelector('.feed-item-content').appendChild(controls);
                 return card;
             },
             sellerCard(seller) {
@@ -827,16 +1007,46 @@
                 });
                 return card;
             },
+            conversationListItem(convo) {
+                const otherParticipantId = Object.keys(convo.participants).find(id => id !== state.user.uid);
+                const otherParticipant = convo.participantDetails[otherParticipantId];
+
+                const item = document.createElement('div');
+                item.className = 'conversation-list-item';
+                item.innerHTML = `
+                    <img src="${otherParticipant.photo || 'https://placehold.co/50x50/ecf0f1/34495e?text=?'}" alt="${otherParticipant.name}">
+                    <div class="conversation-details">
+                        <strong>${otherParticipant.name}</strong>
+                        <span>לגבי: ${convo.itemTitle}</span>
+                    </div>
+                `;
+                item.onclick = () => openChat(convo);
+                return item;
+            },
             authUI() {
                 const authContainer = a('#auth-container');
                 const userInfoContainer = a('#user-info');
+                authContainer.innerHTML = ''; // Clear previous
                 if (state.isAuthenticated) {
-                    authContainer.innerHTML = `<button id="logout-btn">התנתק</button>`;
+                    const messagesBtn = document.createElement('button');
+                    messagesBtn.id = 'messages-btn';
+                    messagesBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
+                    messagesBtn.onclick = () => modals.open('messages-modal');
+                    authContainer.appendChild(messagesBtn);
+
+                    const logoutBtn = document.createElement('button');
+                    logoutBtn.id = 'logout-btn';
+                    logoutBtn.textContent = 'התנתק';
+                    authContainer.appendChild(logoutBtn);
+
                     userInfoContainer.innerHTML = `
                         <span>שלום, ${state.user.displayName}</span>
                         <img src="${state.user.photoURL}" alt="תמונת פרופיל" style="width: 40px; border-radius: 50%; vertical-align: middle; margin-right: 10px;">`;
                 } else {
-                    authContainer.innerHTML = `<button id="login-btn">התחבר</button>`;
+                    const loginBtn = document.createElement('button');
+                    loginBtn.id = 'login-btn';
+                    loginBtn.textContent = 'התחבר';
+                    authContainer.appendChild(loginBtn);
                     userInfoContainer.innerHTML = '';
                 }
                 events.attachAuthListeners();
@@ -886,6 +1096,15 @@
                     gallery.innerHTML = '<p>אין מוכרים להצגה.</p>';
                 } else {
                     state.sellers.forEach(seller => gallery.appendChild(components.sellerCard(seller)));
+                }
+            },
+            renderConversationsList() {
+                const list = a('#conversations-list');
+                list.innerHTML = '';
+                if (state.conversations.length === 0) {
+                    list.innerHTML = '<p>אין לך שיחות פעילות.</p>';
+                } else {
+                    state.conversations.forEach(convo => list.appendChild(components.conversationListItem(convo)));
                 }
             },
             renderCurrentView() {
@@ -963,17 +1182,27 @@
                     state.update('filter', { type: 'all', term: '' });
                 });
 
-                // View toggle events
                 a('#grid-view-btn').addEventListener('click', () => state.update('viewMode', 'grid'));
                 a('#feed-view-btn').addEventListener('click', () => state.update('viewMode', 'feed'));
+                
+                a('#chat-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const conversationId = a('#chat-modal').dataset.conversationId;
+                    const text = a('#chat-input').value;
+                    if (conversationId && text) {
+                        sendMessage(conversationId, text);
+                        a('#chat-input').value = '';
+                    }
+                });
             },
             attachAuthListeners() {
                 const loginBtn = a('#login-btn');
                 const logoutBtn = a('#logout-btn');
-                const loginGoogleBtn = a('#login-google-btn');
                 if (loginBtn) loginBtn.onclick = () => modals.open('auth-modal');
                 if (logoutBtn) logoutBtn.onclick = () => signOut();
-                if (loginGoogleBtn) loginGoogleBtn.onclick = () => signInWithGoogle();
+                // Google login is in its own modal
+                const loginGoogleBtn = a('#login-google-btn');
+                if(loginGoogleBtn) loginGoogleBtn.onclick = () => signInWithGoogle();
             },
             onAddItem() {
                 if (!state.isAuthenticated) return modals.open('auth-modal');
@@ -1013,6 +1242,8 @@
                 a('#add-item-btn').style.display = isAuth ? 'block' : 'none';
                 if (!isAuth) {
                     state.update('filter', { type: 'all', term: '' });
+                    if (unsubscribeFromConversations) unsubscribeFromConversations();
+                    state.update('conversations', []);
                 }
             });
 
@@ -1020,6 +1251,8 @@
                 processSellers(state.items);
                 views.renderCurrentView();
             });
+            
+            state.onChange('conversations', () => views.renderConversationsList());
             
             state.onChange('filter', () => {
                 views.renderCurrentView();
