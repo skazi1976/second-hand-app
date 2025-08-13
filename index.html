@@ -1235,14 +1235,15 @@
         }
 
         // --- NOTIFICATIONS ---
-        async function createNotification(targetUserId, text) {
+        async function createNotification(targetUserId, text, data = {}) {
             if (!db || !targetUserId || targetUserId === state.user.uid) return;
             try {
                 const notificationsCol = collection(db, `users/${targetUserId}/notifications`);
                 await addDoc(notificationsCol, {
                     text,
                     createdAt: serverTimestamp(),
-                    read: false
+                    read: false,
+                    ...data
                 });
             } catch (error) {
                 console.error("Error creating notification:", error);
@@ -1333,7 +1334,8 @@
                 const otherParticipantId = Object.keys(convo.participants).find(id => id !== state.user.uid);
                 createNotification(
                     otherParticipantId,
-                    `הודעה חדשה מ-${state.user.displayName} בנוגע ל: ${convo.itemTitle}`
+                    `הודעה חדשה מ-${state.user.displayName} בנוגע ל: ${convo.itemTitle}`,
+                    { conversationId: conversationId } // Pass conversation ID
                 );
             }
         }
@@ -1608,12 +1610,26 @@
             notificationItem(notification) {
                 const item = document.createElement('div');
                 item.className = `notification-item ${notification.read ? '' : 'unread'}`;
+                
+                // Add data attribute if it's a message notification
+                if (notification.conversationId) {
+                    item.dataset.conversationId = notification.conversationId;
+                }
+
                 item.innerHTML = `
                     <p>${notification.text}</p>
                     <div class="timestamp">${formatTimeAgo(notification.createdAt)}</div>
                 `;
                 item.onclick = () => {
-                    // Handle click (e.g., navigate)
+                    const conversationId = item.dataset.conversationId;
+                    if (conversationId) {
+                        const conversation = state.conversations.find(c => c.id === conversationId);
+                        if (conversation) {
+                            openChat(conversation);
+                        } else {
+                            modals.showAlert("השיחה המקורית לא נמצאה.");
+                        }
+                    }
                     a('#notifications-dropdown').classList.add('hidden');
                 };
                 return item;
