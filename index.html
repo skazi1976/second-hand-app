@@ -1335,7 +1335,12 @@
                 createNotification(
                     otherParticipantId,
                     `הודעה חדשה מ-${state.user.displayName} בנוגע ל: ${convo.itemTitle}`,
-                    { conversationId: conversationId } // Pass conversation ID
+                    { 
+                        type: 'message',
+                        conversationId: conversationId,
+                        participants: convo.participants,
+                        participantDetails: convo.participantDetails
+                    }
                 );
             }
         }
@@ -1611,26 +1616,29 @@
                 const item = document.createElement('div');
                 item.className = `notification-item ${notification.read ? '' : 'unread'}`;
                 
-                // Add data attribute if it's a message notification
-                if (notification.conversationId) {
-                    item.dataset.conversationId = notification.conversationId;
-                }
-
                 item.innerHTML = `
                     <p>${notification.text}</p>
                     <div class="timestamp">${formatTimeAgo(notification.createdAt)}</div>
                 `;
+
                 item.onclick = () => {
-                    const conversationId = item.dataset.conversationId;
-                    if (conversationId) {
-                        const conversation = state.conversations.find(c => c.id === conversationId);
-                        if (conversation) {
-                            openChat(conversation);
+                    a('#notifications-dropdown').classList.add('hidden');
+                    
+                    if (notification.type === 'message' && notification.conversationId) {
+                        const conversationFromState = state.conversations.find(c => c.id === notification.conversationId);
+                        
+                        if (conversationFromState) {
+                            openChat(conversationFromState);
+                        } else if (notification.participants && notification.participantDetails) {
+                            openChat({
+                                id: notification.conversationId,
+                                participants: notification.participants,
+                                participantDetails: notification.participantDetails
+                            });
                         } else {
                             modals.showAlert("השיחה המקורית לא נמצאה.");
                         }
                     }
-                    a('#notifications-dropdown').classList.add('hidden');
                 };
                 return item;
             },
