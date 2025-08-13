@@ -82,7 +82,7 @@
             align-items: center;
         }
 
-        #search-input {
+        #search-input, #category-filter {
             flex-grow: 1;
             padding: 10px;
             border: 1px solid #ddd;
@@ -222,6 +222,15 @@
             color: #7f8c8d;
             margin-bottom: 1rem;
         }
+        .item-category-badge {
+            display: inline-block;
+            background-color: #ecf0f1;
+            color: var(--text-color);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
         .item-actions {
             display: flex;
             justify-content: space-between;
@@ -330,7 +339,7 @@
             margin-top: 10px;
         }
 
-        form input, form textarea, form button {
+        form input, form textarea, form button, form select {
             width: 100%;
             padding: 10px;
             margin-top: 5px;
@@ -532,6 +541,15 @@
     <main>
         <div id="controls-bar">
             <input type="search" id="search-input" placeholder="חפש פריטים...">
+            <select id="category-filter">
+                <option value="all">כל הקטגוריות</option>
+                <option value="חולצות">חולצות</option>
+                <option value="מכנסיים">מכנסיים</option>
+                <option value="שמלות">שמלות</option>
+                <option value="נעליים">נעליים</option>
+                <option value="אביזרים">אביזרים</option>
+                <option value="אחר">אחר</option>
+            </select>
             <div id="filter-buttons">
                 <button id="my-items-btn" class="hidden">הפריטים שלי</button>
                 <button id="sellers-btn">מוכרים</button>
@@ -568,6 +586,16 @@
                 <textarea id="item-description" rows="4" required></textarea>
                 <label for="item-price">מחיר</label>
                 <input type="number" id="item-price" required>
+                <label for="item-category">קטגוריה</label>
+                <select id="item-category" required>
+                    <option value="" disabled selected>בחר קטגוריה</option>
+                    <option value="חולצות">חולצות</option>
+                    <option value="מכנסיים">מכנסיים</option>
+                    <option value="שמלות">שמלות</option>
+                    <option value="נעליים">נעליים</option>
+                    <option value="אביזרים">אביזרים</option>
+                    <option value="אחר">אחר</option>
+                </select>
                 <label for="item-image">תמונה (URL)</label>
                 <input type="url" id="item-image" required>
                 <img id="image-preview" src="" alt="תצוגה מקדימה של התמונה" style="max-width: 100%; margin-top: 10px; display: none;">
@@ -758,6 +786,7 @@
                 a('#item-description').value = item.description || '';
                 a('#item-price').value = item.price || '';
                 a('#item-image').value = item.image || '';
+                a('#item-category').value = item.category || '';
                 const preview = a('#image-preview');
                 preview.src = item.image || '';
                 preview.style.display = item.image ? 'block' : 'none';
@@ -870,7 +899,6 @@
                 ownerId: state.user.uid,
                 ownerName: state.user.displayName,
                 ownerPhoto: state.user.photoURL,
-                likes: [], // Initialize likes array
             };
 
             try {
@@ -878,6 +906,7 @@
                     await updateDoc(doc(db, "items", id), itemToSave);
                 } else {
                     itemToSave.createdAt = serverTimestamp();
+                    itemToSave.likes = []; // Initialize likes array for new items
                     await addDoc(collectionRef, itemToSave);
                 }
                 modals.close('item-modal');
@@ -1004,6 +1033,7 @@
                 card.innerHTML = `
                     <img src="${item.image}" alt="${item.title}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
                     <div class="item-card-content">
+                        ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
                         <h3>${item.title}</h3>
                         <p>${item.description}</p>
                         <div class="item-price">₪${item.price}</div>
@@ -1057,6 +1087,7 @@
                     </div>
                     <img src="${item.image}" alt="${item.title}" class="feed-item-image" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
                     <div class="feed-item-content">
+                        ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
                         <h3>${item.title}</h3>
                         <p>${item.description}</p>
                         <div class="item-price">₪${item.price}</div>
@@ -1159,16 +1190,20 @@
         const views = {
             getFilteredItems() {
                 const { type, term } = state.filter;
+                let items = state.items;
+
                 if (type === 'search') {
-                    return state.items.filter(item => 
+                    items = items.filter(item => 
                         item.title.toLowerCase().includes(term.toLowerCase())
                     );
                 } else if (type === 'my_items' && state.user) {
-                    return state.items.filter(item => item.ownerId === state.user.uid);
+                    items = items.filter(item => item.ownerId === state.user.uid);
                 } else if (type === 'by_seller') {
-                    return state.items.filter(item => item.ownerId === term);
+                    items = items.filter(item => item.ownerId === term);
+                } else if (type === 'by_category' && term !== 'all') {
+                    items = items.filter(item => item.category === term);
                 }
-                return state.items;
+                return items;
             },
             renderItemsGallery() {
                 const gallery = a('#gallery');
@@ -1217,6 +1252,8 @@
                 a('#sellers-gallery').classList.toggle('hidden', !isSellersView);
                 a('#search-input').classList.toggle('hidden', isSellersView);
                 a('#view-toggle').classList.toggle('hidden', isSellersView);
+                a('#category-filter').classList.toggle('hidden', isSellersView);
+
 
                 if (isSellersView) {
                     a('#gallery').classList.add('hidden');
@@ -1273,6 +1310,10 @@
                     state.update('filter', { type: 'search', term: e.target.value });
                 });
 
+                a('#category-filter').addEventListener('change', (e) => {
+                    state.update('filter', { type: 'by_category', term: e.target.value });
+                });
+
                 a('#my-items-btn').addEventListener('click', () => {
                     state.update('filter', { type: 'my_items', term: '' });
                 });
@@ -1327,7 +1368,8 @@
                     title: a('#item-title').value,
                     description: a('#item-description').value,
                     price: parseFloat(a('#item-price').value),
-                    image: a('#item-image').value
+                    image: a('#item-image').value,
+                    category: a('#item-category').value
                 });
             }
         };
