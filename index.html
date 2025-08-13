@@ -211,6 +211,40 @@
         .feed-item-content h3 {
             margin-top: 0;
         }
+        .item-price {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin: 0.5rem 0;
+        }
+        .item-timestamp {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+        .item-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+        }
+        .like-button {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .like-button svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--danger-color);
+            fill: none;
+        }
+        .like-button.liked svg {
+            fill: var(--danger-color);
+        }
 
         /* Seller Card Styles */
         .seller-card {
@@ -642,7 +676,7 @@
         // Import Firebase modules from CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // DOM element selectors
         const a = (selector) => document.querySelector(selector);
@@ -673,6 +707,26 @@
 
         // Firebase instances
         let app, auth, db;
+
+        // --- UTILITY FUNCTIONS ---
+        function formatTimeAgo(timestamp) {
+            if (!timestamp) return '';
+            const now = new Date();
+            const past = timestamp.toDate();
+            const seconds = Math.floor((now - past) / 1000);
+            
+            let interval = seconds / 31536000;
+            if (interval > 1) return `לפני ${Math.floor(interval)} שנים`;
+            interval = seconds / 2592000;
+            if (interval > 1) return `לפני ${Math.floor(interval)} חודשים`;
+            interval = seconds / 86400;
+            if (interval > 1) return `לפני ${Math.floor(interval)} ימים`;
+            interval = seconds / 3600;
+            if (interval > 1) return `לפני ${Math.floor(interval)} שעות`;
+            interval = seconds / 60;
+            if (interval > 1) return `לפני ${Math.floor(interval)} דקות`;
+            return 'ממש עכשיו';
+        }
 
         // --- MODAL & UI HELPERS ---
         const modals = {
@@ -816,6 +870,7 @@
                 ownerId: state.user.uid,
                 ownerName: state.user.displayName,
                 ownerPhoto: state.user.photoURL,
+                likes: [], // Initialize likes array
             };
 
             try {
@@ -844,6 +899,23 @@
                     modals.showAlert("Failed to delete item.", "Error");
                 }
             });
+        }
+        
+        async function toggleLike(itemId) {
+            if (!db || !state.isAuthenticated) return modals.open('auth-modal');
+            
+            const itemRef = doc(db, "items", itemId);
+            const item = state.items.find(i => i.id === itemId);
+            const userLiked = item.likes && item.likes.includes(state.user.uid);
+
+            try {
+                await updateDoc(itemRef, {
+                    likes: userLiked ? arrayRemove(state.user.uid) : arrayUnion(state.user.uid)
+                });
+            } catch (error) {
+                console.error("Error toggling like:", error);
+                modals.showAlert("לא ניתן היה לעדכן את הלייק.");
+            }
         }
 
         // --- MESSAGING ---
@@ -926,16 +998,27 @@
                 const card = document.createElement('div');
                 card.className = 'item-card';
                 card.dataset.id = item.id;
+                const likes = item.likes || [];
+                const userLiked = state.isAuthenticated && likes.includes(state.user.uid);
+
                 card.innerHTML = `
                     <img src="${item.image}" alt="${item.title}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
                     <div class="item-card-content">
                         <h3>${item.title}</h3>
                         <p>${item.description}</p>
-                        <p><strong>מחיר:</strong> ₪${item.price}</p>
+                        <div class="item-price">₪${item.price}</div>
+                        <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
+                        <div class="item-actions">
+                            <button class="like-button ${userLiked ? 'liked' : ''}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                <span>${likes.length}</span>
+                            </button>
+                            <div class="item-controls"></div>
+                        </div>
                     </div>
                 `;
-                const controls = document.createElement('div');
-                controls.className = 'item-controls';
+
+                const controlsContainer = card.querySelector('.item-controls');
                 if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'ערוך';
@@ -944,21 +1027,29 @@
                     deleteBtn.textContent = 'מחק';
                     deleteBtn.style.backgroundColor = 'var(--danger-color)';
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
-                    controls.appendChild(editBtn);
-                    controls.appendChild(deleteBtn);
+                    controlsContainer.appendChild(editBtn);
+                    controlsContainer.appendChild(deleteBtn);
                 } else if (state.isAuthenticated) {
                     const contactBtn = document.createElement('button');
-                    contactBtn.textContent = 'צור קשר עם המוכר';
+                    contactBtn.textContent = 'צור קשר';
                     contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
-                    controls.appendChild(contactBtn);
+                    controlsContainer.appendChild(contactBtn);
                 }
-                card.appendChild(controls);
+                
+                card.querySelector('.like-button').onclick = (e) => {
+                    e.stopPropagation();
+                    toggleLike(item.id);
+                };
+
                 return card;
             },
             feedItemCard(item) {
                 const card = document.createElement('div');
                 card.className = 'feed-item';
                 card.dataset.id = item.id;
+                const likes = item.likes || [];
+                const userLiked = state.isAuthenticated && likes.includes(state.user.uid);
+
                 card.innerHTML = `
                     <div class="feed-item-header">
                         <img src="${item.ownerPhoto || 'https://placehold.co/40x40/ecf0f1/34495e?text=?'}" alt="${item.ownerName}" class="feed-item-seller-photo">
@@ -968,11 +1059,18 @@
                     <div class="feed-item-content">
                         <h3>${item.title}</h3>
                         <p>${item.description}</p>
-                        <p><strong>מחיר:</strong> ₪${item.price}</p>
+                        <div class="item-price">₪${item.price}</div>
+                        <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
+                        <div class="item-actions">
+                             <button class="like-button ${userLiked ? 'liked' : ''}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                <span>${likes.length}</span>
+                            </button>
+                            <div class="item-controls"></div>
+                        </div>
                     </div>
                 `;
-                const controls = document.createElement('div');
-                controls.className = 'item-controls';
+                const controlsContainer = card.querySelector('.item-controls');
                  if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'ערוך';
@@ -981,15 +1079,20 @@
                     deleteBtn.textContent = 'מחק';
                     deleteBtn.style.backgroundColor = 'var(--danger-color)';
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
-                    controls.appendChild(editBtn);
-                    controls.appendChild(deleteBtn);
+                    controlsContainer.appendChild(editBtn);
+                    controlsContainer.appendChild(deleteBtn);
                 } else if (state.isAuthenticated) {
                     const contactBtn = document.createElement('button');
-                    contactBtn.textContent = 'צור קשר עם המוכר';
+                    contactBtn.textContent = 'צור קשר';
                     contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
-                    controls.appendChild(contactBtn);
+                    controlsContainer.appendChild(contactBtn);
                 }
-                card.querySelector('.feed-item-content').appendChild(controls);
+                
+                card.querySelector('.like-button').onclick = (e) => {
+                    e.stopPropagation();
+                    toggleLike(item.id);
+                };
+
                 return card;
             },
             sellerCard(seller) {
