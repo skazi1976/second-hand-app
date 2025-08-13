@@ -148,16 +148,32 @@
             display: flex;
             flex-direction: column;
         }
-
-        .item-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .item-card img {
+        
+        /* Image Slider */
+        .image-slider {
+            position: relative;
             width: 100%;
             height: 200px;
+        }
+        .slider-image {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
         }
+        .slider-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .slider-btn.prev { left: 10px; }
+        .slider-btn.next { right: 10px; }
+
 
         .item-card-content {
             padding: 1rem;
@@ -215,11 +231,15 @@
         .feed-item-seller-name {
             font-weight: bold;
         }
+        .feed-item-image-container {
+             position: relative;
+             width: 100%;
+             max-height: 600px;
+        }
         .feed-item-image {
             width: 100%;
-            max-height: 600px;
-            object-fit: cover;
             display: block;
+            object-fit: cover;
         }
         .feed-item-content {
             padding: 1rem;
@@ -364,6 +384,36 @@
             border: 1px solid #ddd;
             box-sizing: border-box;
         }
+        
+        #image-upload-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .preview-image-container {
+            position: relative;
+        }
+        .preview-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        .remove-image-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
 
         form button {
             background-color: var(--primary-color);
@@ -615,9 +665,9 @@
                 </select>
                 <label for="item-phone">מספר טלפון (לוואטסאפ, אופציונלי)</label>
                 <input type="tel" id="item-phone" placeholder="לדוגמה: 0501234567">
-                <label for="item-image">תמונה (URL)</label>
-                <input type="url" id="item-image" required>
-                <img id="image-preview" src="" alt="תצוגה מקדימה של התמונה" style="max-width: 100%; margin-top: 10px; display: none;">
+                <label for="item-images">תמונות (עד 6)</label>
+                <input type="file" id="item-images" accept="image/*" multiple>
+                <div id="image-upload-preview"></div>
                 <button type="submit">שמור</button>
             </form>
         </div>
@@ -724,6 +774,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         // DOM element selectors
         const a = (selector) => document.querySelector(selector);
@@ -738,6 +789,7 @@
             isAuthenticated: false,
             viewMode: 'feed', 
             filter: { type: 'all', term: '' },
+            filesToUpload: [],
             listeners: {},
             onChange(key, callback) {
                 if (!this.listeners[key]) this.listeners[key] = [];
@@ -753,7 +805,7 @@
         };
 
         // Firebase instances
-        let app, auth, db;
+        let app, auth, db, storage;
 
         // --- UTILITY FUNCTIONS ---
         function formatTimeAgo(timestamp) {
@@ -804,17 +856,17 @@
                 a('#item-title').value = item.title || '';
                 a('#item-description').value = item.description || '';
                 a('#item-price').value = item.price || '';
-                a('#item-image').value = item.image || '';
                 a('#item-category').value = item.category || '';
                 a('#item-phone').value = item.phone || '';
-                const preview = a('#image-preview');
-                preview.src = item.image || '';
-                preview.style.display = item.image ? 'block' : 'none';
+                // Image handling for editing is complex, for now we clear it
+                a('#image-upload-preview').innerHTML = '';
+                state.filesToUpload = [];
             },
             clearItemForm() {
                 a('#item-form').reset();
                 a('#item-id').value = '';
-                a('#image-preview').style.display = 'none';
+                a('#image-upload-preview').innerHTML = '';
+                state.filesToUpload = [];
                 a('#item-modal-title').textContent = 'הוסף פריט חדש';
             }
         };
@@ -829,6 +881,7 @@
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+                storage = getStorage(app);
                 console.log("Firebase Initialized");
                 setupAuthObserver();
             } catch (e) {
@@ -907,9 +960,26 @@
             });
         }
 
-        async function saveItem(itemData) {
+        async function uploadImages(files) {
+            if (!storage || !state.user) return [];
+            const uploadPromises = files.map(file => {
+                const filePath = `items/${state.user.uid}/${Date.now()}_${file.name}`;
+                const storageRef = ref(storage, filePath);
+                return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
+            });
+            return Promise.all(uploadPromises);
+        }
+
+        async function saveItem(itemData, files) {
             if (!db || !state.isAuthenticated || !state.user) {
                 return modals.showAlert("You must be logged in to save items.", "Error");
+            }
+            
+            modals.showAlert("מעלה תמונות ושומר פריט...", "נא להמתין");
+            
+            const imageUrls = await uploadImages(files);
+            if (files.length > 0 && imageUrls.length === 0) {
+                return modals.showAlert("העלאת התמונות נכשלה.", "שגיאה");
             }
 
             const collectionRef = collection(db, "items");
@@ -919,14 +989,20 @@
                 ownerId: state.user.uid,
                 ownerName: state.user.displayName,
                 ownerPhoto: state.user.photoURL,
+                images: imageUrls, // Save array of image URLs
             };
 
             try {
                 if (id) {
+                    // For simplicity, editing doesn't support changing images for now
+                    delete itemToSave.images;
                     await updateDoc(doc(db, "items", id), itemToSave);
                 } else {
+                    if (imageUrls.length === 0) {
+                        return modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
+                    }
                     itemToSave.createdAt = serverTimestamp();
-                    itemToSave.likes = []; // Initialize likes array for new items
+                    itemToSave.likes = [];
                     await addDoc(collectionRef, itemToSave);
                 }
                 modals.close('item-modal');
@@ -1034,7 +1110,7 @@
                 participantDetails,
                 itemId: item.id,
                 itemTitle: item.title,
-                itemImage: item.image
+                itemImage: item.images ? item.images[0] : ''
             }, { merge: true });
             
             openChat({ id: conversationId, participants, participantDetails });
@@ -1043,6 +1119,40 @@
 
         // --- UI COMPONENTS & RENDERING ---
         const components = {
+            createImageSlider(images, containerClass) {
+                const slider = document.createElement('div');
+                slider.className = containerClass;
+                if (!images || images.length === 0) {
+                    slider.innerHTML = `<img src="https://placehold.co/600x400/ecf0f1/34495e?text=No+Image" class="slider-image">`;
+                    return slider;
+                }
+
+                let currentIndex = 0;
+                slider.innerHTML = `<img src="${images[currentIndex]}" class="slider-image">`;
+
+                if (images.length > 1) {
+                    const prevBtn = document.createElement('button');
+                    prevBtn.className = 'slider-btn prev';
+                    prevBtn.innerHTML = '&#10094;';
+                    prevBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        currentIndex = (currentIndex > 0) ? currentIndex - 1 : images.length - 1;
+                        slider.querySelector('.slider-image').src = images[currentIndex];
+                    };
+
+                    const nextBtn = document.createElement('button');
+                    nextBtn.className = 'slider-btn next';
+                    nextBtn.innerHTML = '&#10095;';
+                    nextBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        currentIndex = (currentIndex < images.length - 1) ? currentIndex + 1 : 0;
+                        slider.querySelector('.slider-image').src = images[currentIndex];
+                    };
+                    slider.appendChild(prevBtn);
+                    slider.appendChild(nextBtn);
+                }
+                return slider;
+            },
             itemCard(item) {
                 const card = document.createElement('div');
                 card.className = 'item-card';
@@ -1050,23 +1160,26 @@
                 const likes = item.likes || [];
                 const userLiked = state.isAuthenticated && likes.includes(state.user.uid);
 
-                card.innerHTML = `
-                    <img src="${item.image}" alt="${item.title}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
-                    <div class="item-card-content">
-                        ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
-                        <h3>${item.title}</h3>
-                        <p>${item.description}</p>
-                        <div class="item-price">₪${item.price}</div>
-                        <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
-                        <div class="item-actions">
-                            <button class="like-button ${userLiked ? 'liked' : ''}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                                <span>${likes.length}</span>
-                            </button>
-                            <div class="item-controls"></div>
-                        </div>
+                const slider = this.createImageSlider(item.images, 'image-slider');
+                card.appendChild(slider);
+
+                const content = document.createElement('div');
+                content.className = 'item-card-content';
+                content.innerHTML = `
+                    ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                    <div class="item-price">₪${item.price}</div>
+                    <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
+                    <div class="item-actions">
+                        <button class="like-button ${userLiked ? 'liked' : ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <span>${likes.length}</span>
+                        </button>
+                        <div class="item-controls"></div>
                     </div>
                 `;
+                card.appendChild(content);
 
                 const controlsContainer = card.querySelector('.item-controls');
                 if (state.isAuthenticated && state.user.uid === item.ownerId) {
@@ -1113,22 +1226,29 @@
                         <img src="${item.ownerPhoto || 'https://placehold.co/40x40/ecf0f1/34495e?text=?'}" alt="${item.ownerName}" class="feed-item-seller-photo">
                         <span class="feed-item-seller-name">${item.ownerName || 'אלמוני'}</span>
                     </div>
-                    <img src="${item.image}" alt="${item.title}" class="feed-item-image" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
-                    <div class="feed-item-content">
-                        ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
-                        <h3>${item.title}</h3>
-                        <p>${item.description}</p>
-                        <div class="item-price">₪${item.price}</div>
-                        <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
-                        <div class="item-actions">
-                             <button class="like-button ${userLiked ? 'liked' : ''}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                                <span>${likes.length}</span>
-                            </button>
-                            <div class="item-controls"></div>
-                        </div>
+                `;
+                
+                const slider = this.createImageSlider(item.images, 'feed-item-image-container');
+                card.appendChild(slider);
+                
+                const content = document.createElement('div');
+                content.className = 'feed-item-content';
+                content.innerHTML = `
+                    ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                    <div class="item-price">₪${item.price}</div>
+                    <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
+                    <div class="item-actions">
+                         <button class="like-button ${userLiked ? 'liked' : ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <span>${likes.length}</span>
+                        </button>
+                        <div class="item-controls"></div>
                     </div>
                 `;
+                card.appendChild(content);
+                
                 const controlsContainer = card.querySelector('.item-controls');
                  if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
@@ -1332,14 +1452,16 @@
             setup() {
                 a('#add-item-btn').addEventListener('click', this.onAddItem);
                 a('#item-form').addEventListener('submit', this.onSaveItem);
-                a('#item-image').addEventListener('input', (e) => {
-                    const preview = a('#image-preview');
-                    if (e.target.value) {
-                        preview.src = e.target.value;
-                        preview.style.display = 'block';
-                    } else {
-                        preview.style.display = 'none';
+                
+                a('#item-images').addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 6) {
+                        modals.showAlert("ניתן להעלות עד 6 תמונות בלבד.");
+                        e.target.value = ""; // Clear the selection
+                        return;
                     }
+                    state.filesToUpload = files;
+                    views.renderImageUploadPreview();
                 });
 
                 a('#search-input').addEventListener('input', (e) => {
@@ -1399,15 +1521,15 @@
             },
             onSaveItem(e) {
                 e.preventDefault();
-                saveItem({
+                const itemData = {
                     id: a('#item-id').value,
                     title: a('#item-title').value,
                     description: a('#item-description').value,
                     price: parseFloat(a('#item-price').value),
-                    image: a('#item-image').value,
                     category: a('#item-category').value,
                     phone: a('#item-phone').value,
-                });
+                };
+                saveItem(itemData, state.filesToUpload);
             }
         };
 
