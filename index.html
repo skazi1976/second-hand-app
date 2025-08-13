@@ -731,6 +731,7 @@
                 <button id="grid-view-btn">רשת</button>
                 <button id="feed-view-btn" class="active">פיד</button>
             </div>
+            <button id="install-app-btn" class="hidden">התקן אפליקציה</button>
         </div>
         <div id="gallery" class="hidden"></div>
         <div id="sellers-gallery" class="hidden"></div>
@@ -933,6 +934,7 @@
 
         // Firebase instances
         let app, auth, db;
+        let deferredPrompt;
 
         // --- UTILITY FUNCTIONS ---
         function formatTimeAgo(timestamp) {
@@ -1010,7 +1012,6 @@
         // --- FIREBASE & AUTHENTICATION ---
         async function initializeFirebase() {
             try {
-                // FIXED: Removed faulty API key check that prevented initialization.
                 if (!firebaseConfig || !firebaseConfig.apiKey) {
                     modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
                     return;
@@ -1845,6 +1846,19 @@
                         a('#chat-input').value = '';
                     }
                 });
+                
+                const installBtn = a('#install-app-btn');
+                if (installBtn) {
+                    installBtn.addEventListener('click', async () => {
+                        if (deferredPrompt) {
+                            deferredPrompt.prompt();
+                            const { outcome } = await deferredPrompt.userChoice;
+                            console.log(`User response to the install prompt: ${outcome}`);
+                            deferredPrompt = null;
+                            installBtn.classList.add('hidden');
+                        }
+                    });
+                }
             },
             attachAuthListeners() {
                 const loginBtn = a('#login-btn');
@@ -1901,6 +1915,24 @@
             initializeFirebase();
             modals.setup();
             events.setup();
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                const installBtn = a('#install-app-btn');
+                if (installBtn) {
+                    installBtn.classList.remove('hidden');
+                }
+            });
+
+            window.addEventListener('appinstalled', () => {
+                deferredPrompt = null;
+                const installBtn = a('#install-app-btn');
+                if (installBtn) {
+                    installBtn.classList.add('hidden');
+                }
+                console.log('PWA was installed');
+            });
 
             state.onChange('isAuthenticated', (isAuth) => {
                 views.renderAuthUI();
