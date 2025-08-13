@@ -228,12 +228,17 @@
             display: flex;
             align-items: center;
             padding: 0.75rem 1rem;
+            justify-content: space-between;
+        }
+        .feed-item-seller-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .feed-item-seller-photo {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            margin-left: 10px;
         }
         .feed-item-seller-name {
             font-weight: bold;
@@ -1078,6 +1083,25 @@
             }
         }
 
+        async function reportItem(item) {
+            if (!db || !state.user) return modals.open('auth-modal');
+            
+            modals.showConfirm("האם אתה בטוח שברצונך לדווח על פריט זה?", async () => {
+                try {
+                    await addDoc(collection(db, "reports"), {
+                        itemId: item.id,
+                        itemTitle: item.title,
+                        reportedBy: state.user.uid,
+                        reportedAt: serverTimestamp()
+                    });
+                    modals.showAlert("הדיווח שלך נשלח. תודה!");
+                } catch (error) {
+                    console.error("Error reporting item:", error);
+                    modals.showAlert("שליחת הדיווח נכשלה.");
+                }
+            });
+        }
+
         // --- MESSAGING ---
         let unsubscribeFromConversations;
         function fetchConversations() {
@@ -1265,8 +1289,10 @@
 
                 card.innerHTML = `
                     <div class="feed-item-header">
-                        <img src="${item.ownerPhoto || 'https://placehold.co/40x40/ecf0f1/34495e?text=?'}" alt="${item.ownerName}" class="feed-item-seller-photo">
-                        <span class="feed-item-seller-name">${item.ownerName || 'אלמוני'}</span>
+                        <div class="feed-item-seller-info">
+                            <img src="${item.ownerPhoto || 'https://placehold.co/40x40/ecf0f1/34495e?text=?'}" alt="${item.ownerName}" class="feed-item-seller-photo">
+                            <span class="feed-item-seller-name">${item.ownerName || 'אלמוני'}</span>
+                        </div>
                     </div>
                 `;
                 
