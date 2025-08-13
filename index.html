@@ -19,6 +19,7 @@
             --primary-color: #3498db;
             --secondary-color: #2ecc71;
             --danger-color: #e74c3c;
+            --whatsapp-color: #25D366;
             --background-color: #f4f6f9;
             --text-color: #34495e;
             --header-color: #2c3e50; 
@@ -168,13 +169,28 @@
         }
         
         .item-controls {
-            padding: 0 1rem 1rem 1rem;
+            display: flex;
+            gap: 10px;
         }
         
-        .item-controls button {
+        .item-controls button, .item-controls a {
             width: auto;
             padding: 8px 12px;
             margin-right: 10px;
+            text-decoration: none;
+            color: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .whatsapp-btn {
+            background-color: var(--whatsapp-color);
+        }
+        .whatsapp-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
         }
 
         /* Feed Item Styles */
@@ -244,6 +260,7 @@
             cursor: pointer;
             background: none;
             border: none;
+            padding: 0;
         }
         .like-button svg {
             width: 24px;
@@ -596,6 +613,8 @@
                     <option value="אביזרים">אביזרים</option>
                     <option value="אחר">אחר</option>
                 </select>
+                <label for="item-phone">מספר טלפון (לוואטסאפ, אופציונלי)</label>
+                <input type="tel" id="item-phone" placeholder="לדוגמה: 0501234567">
                 <label for="item-image">תמונה (URL)</label>
                 <input type="url" id="item-image" required>
                 <img id="image-preview" src="" alt="תצוגה מקדימה של התמונה" style="max-width: 100%; margin-top: 10px; display: none;">
@@ -787,6 +806,7 @@
                 a('#item-price').value = item.price || '';
                 a('#item-image').value = item.image || '';
                 a('#item-category').value = item.category || '';
+                a('#item-phone').value = item.phone || '';
                 const preview = a('#image-preview');
                 preview.src = item.image || '';
                 preview.style.display = item.image ? 'block' : 'none';
@@ -1040,7 +1060,7 @@
                         <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
                         <div class="item-actions">
                             <button class="like-button ${userLiked ? 'liked' : ''}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                                 <span>${likes.length}</span>
                             </button>
                             <div class="item-controls"></div>
@@ -1060,8 +1080,16 @@
                     controlsContainer.appendChild(editBtn);
                     controlsContainer.appendChild(deleteBtn);
                 } else if (state.isAuthenticated) {
+                    if (item.phone) {
+                        const whatsappBtn = document.createElement('a');
+                        whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
+                        whatsappBtn.target = "_blank";
+                        whatsappBtn.className = "whatsapp-btn";
+                        whatsappBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M16.75,13.96C17,14.26 17.25,14.81 17.3,15.06C17.35,15.31 17.3,15.5 17.3,15.55C17.3,15.85 17.15,16.24 16.88,16.46C16.63,16.66 16.24,16.84 15.69,16.96C15.14,17.11 14.49,17.21 12.27,16.29C9.48,15.11 7.5,12.82 7.29,12.52C7.08,12.22 6,10.76 6,9.22C6,7.68 6.95,6.73 7.24,6.43C7.54,6.14 7.92,6.04 8.21,6.04C8.36,6.04 8.5,6.04 8.63,6.04C8.88,6.04 9,6.16 9.16,6.5C9.33,6.83 9.73,7.82 9.83,7.97C9.93,8.12 10,8.22 9.93,8.37C9.85,8.52 9.73,8.64 9.61,8.76C9.48,8.88 9.36,9 9.24,9.12C9.12,9.24 9,9.36 9.12,9.58C9.25,9.81 9.73,10.59 10.45,11.23C11.33,12.03 12.13,12.4 12.38,12.58C12.63,12.75 12.78,12.73 12.94,12.58C13.1,12.43 13.28,12.11 13.43,11.91C13.59,11.71 13.89,11.64 14.19,11.76C14.49,11.89 15.93,12.62 16.23,12.77C16.53,12.92 16.68,13 16.73,13.12C16.78,13.24 16.75,13.66 16.75,13.96M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22C13.66,22 15.25,21.54 16.63,20.72L22,22L20.72,16.63C21.54,15.25 22,13.66 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.54 19.5,15 18.65,16.24L19.53,19.53L16.24,18.65C15,19.5 13.54,20 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"></path></svg>`;
+                        controlsContainer.appendChild(whatsappBtn);
+                    }
                     const contactBtn = document.createElement('button');
-                    contactBtn.textContent = 'צור קשר';
+                    contactBtn.textContent = 'הודעה';
                     contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
                     controlsContainer.appendChild(contactBtn);
                 }
@@ -1094,7 +1122,7 @@
                         <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
                         <div class="item-actions">
                              <button class="like-button ${userLiked ? 'liked' : ''}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                                 <span>${likes.length}</span>
                             </button>
                             <div class="item-controls"></div>
@@ -1113,8 +1141,16 @@
                     controlsContainer.appendChild(editBtn);
                     controlsContainer.appendChild(deleteBtn);
                 } else if (state.isAuthenticated) {
+                    if (item.phone) {
+                        const whatsappBtn = document.createElement('a');
+                        whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
+                        whatsappBtn.target = "_blank";
+                        whatsappBtn.className = "whatsapp-btn";
+                        whatsappBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M16.75,13.96C17,14.26 17.25,14.81 17.3,15.06C17.35,15.31 17.3,15.5 17.3,15.55C17.3,15.85 17.15,16.24 16.88,16.46C16.63,16.66 16.24,16.84 15.69,16.96C15.14,17.11 14.49,17.21 12.27,16.29C9.48,15.11 7.5,12.82 7.29,12.52C7.08,12.22 6,10.76 6,9.22C6,7.68 6.95,6.73 7.24,6.43C7.54,6.14 7.92,6.04 8.21,6.04C8.36,6.04 8.5,6.04 8.63,6.04C8.88,6.04 9,6.16 9.16,6.5C9.33,6.83 9.73,7.82 9.83,7.97C9.93,8.12 10,8.22 9.93,8.37C9.85,8.52 9.73,8.64 9.61,8.76C9.48,8.88 9.36,9 9.24,9.12C9.12,9.24 9,9.36 9.12,9.58C9.25,9.81 9.73,10.59 10.45,11.23C11.33,12.03 12.13,12.4 12.38,12.58C12.63,12.75 12.78,12.73 12.94,12.58C13.1,12.43 13.28,12.11 13.43,11.91C13.59,11.71 13.89,11.64 14.19,11.76C14.49,11.89 15.93,12.62 16.23,12.77C16.53,12.92 16.68,13 16.73,13.12C16.78,13.24 16.75,13.66 16.75,13.96M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22C13.66,22 15.25,21.54 16.63,20.72L22,22L20.72,16.63C21.54,15.25 22,13.66 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.54 19.5,15 18.65,16.24L19.53,19.53L16.24,18.65C15,19.5 13.54,20 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"></path></svg>`;
+                        controlsContainer.appendChild(whatsappBtn);
+                    }
                     const contactBtn = document.createElement('button');
-                    contactBtn.textContent = 'צור קשר';
+                    contactBtn.textContent = 'הודעה';
                     contactBtn.onclick = (e) => { e.stopPropagation(); startOrGetConversation(item); };
                     controlsContainer.appendChild(contactBtn);
                 }
@@ -1164,7 +1200,7 @@
                 if (state.isAuthenticated) {
                     const messagesBtn = document.createElement('button');
                     messagesBtn.id = 'messages-btn';
-                    messagesBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
+                    messagesBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
                     messagesBtn.onclick = () => modals.open('messages-modal');
                     authContainer.appendChild(messagesBtn);
 
@@ -1369,7 +1405,8 @@
                     description: a('#item-description').value,
                     price: parseFloat(a('#item-price').value),
                     image: a('#item-image').value,
-                    category: a('#item-category').value
+                    category: a('#item-category').value,
+                    phone: a('#item-phone').value,
                 });
             }
         };
