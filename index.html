@@ -96,7 +96,7 @@
             color: white;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
         #install-app-btn {
              background-color: var(--secondary-color);
@@ -898,6 +898,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js";
         
         const ADMIN_EMAIL = "ohadf1976@gmail.com";
 
@@ -1036,6 +1037,7 @@
                     state.update('isAdmin', email === ADMIN_EMAIL);
                     fetchConversations();
                     fetchNotifications();
+                    setupPushNotifications(); // Request permission after user logs in
                 } else {
                     state.update('user', null);
                     state.update('isAuthenticated', false);
@@ -1371,6 +1373,39 @@
                 console.error("Error starting conversation:", error);
                 modals.showAlert("לא ניתן היה להתחיל שיחה. נסה שוב מאוחר יותר.", "שגיאה");
             }
+        }
+
+        // --- PUSH NOTIFICATIONS SETUP ---
+        async function setupPushNotifications() {
+            if (!state.user || !('serviceWorker' in navigator)) return;
+
+            const messaging = getMessaging(app);
+
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+
+                    const currentToken = await getToken(messaging, { vapidKey: 'BP414nWpehXwmvB8T-D0eXGDslYA8yoMeqUc9Blql9nqRJYN-4oLybXtRNEAsfWg8jHM03iOB9f8tP0B67jB-BQ' });
+
+                    if (currentToken) {
+                        const userRef = doc(db, `users/${state.user.uid}`);
+                        await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
+                        console.log('FCM Token saved:', currentToken);
+                    } else {
+                        console.log('No registration token available. Request permission to generate one.');
+                    }
+                } else {
+                    console.log('Unable to get permission to notify.');
+                }
+            } catch (error) {
+                console.error('An error occurred while setting up push notifications.', error);
+            }
+
+            onMessage(messaging, (payload) => {
+                console.log('Message received in foreground. ', payload);
+                // Optionally show an in-app notification banner
+            });
         }
 
 
