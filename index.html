@@ -208,6 +208,11 @@
             height: 18px;
             fill: white;
         }
+        .buy-btn {
+            background-color: var(--secondary-color);
+            flex-grow: 1;
+            text-align: center;
+        }
 
         /* Feed Item Styles */
         .feed-item {
@@ -665,6 +670,10 @@
                 </select>
                 <label for="item-phone">מספר טלפון (לוואטסאפ, אופציונלי)</label>
                 <input type="tel" id="item-phone" placeholder="לדוגמה: 0501234567">
+                <div class="admin-only hidden">
+                    <label for="item-affiliate-link">קישור אפילייט</label>
+                    <input type="url" id="item-affiliate-link" placeholder="הדבק קישור כאן">
+                </div>
                 <label for="item-images">תמונות (עד 6)</label>
                 <input type="file" id="item-images" accept="image/*" multiple>
                 <div id="image-upload-preview"></div>
@@ -776,6 +785,8 @@
         import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
+        const ADMIN_EMAIL = "ohadf1976@gmail.com";
+
         // DOM element selectors
         const a = (selector) => document.querySelector(selector);
         const b = (selector) => document.querySelectorAll(selector);
@@ -787,6 +798,7 @@
             sellers: [], 
             conversations: [],
             isAuthenticated: false,
+            isAdmin: false,
             viewMode: 'feed', 
             filter: { type: 'all', term: '' },
             filesToUpload: [],
@@ -858,7 +870,7 @@
                 a('#item-price').value = item.price || '';
                 a('#item-category').value = item.category || '';
                 a('#item-phone').value = item.phone || '';
-                // Image handling for editing is complex, for now we clear it
+                a('#item-affiliate-link').value = item.affiliateLink || '';
                 a('#image-upload-preview').innerHTML = '';
                 state.filesToUpload = [];
             },
@@ -896,10 +908,12 @@
                     const { uid, displayName, email, photoURL } = user;
                     state.update('user', { uid, displayName, email, photoURL });
                     state.update('isAuthenticated', true);
+                    state.update('isAdmin', email === ADMIN_EMAIL);
                     fetchConversations();
                 } else {
                     state.update('user', null);
                     state.update('isAuthenticated', false);
+                    state.update('isAdmin', false);
                     if (!auth.currentUser) {
                         signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
                     }
@@ -989,16 +1003,17 @@
                 ownerId: state.user.uid,
                 ownerName: state.user.displayName,
                 ownerPhoto: state.user.photoURL,
-                images: imageUrls, // Save array of image URLs
             };
+            
+            if (imageUrls.length > 0) {
+                itemToSave.images = imageUrls;
+            }
 
             try {
                 if (id) {
-                    // For simplicity, editing doesn't support changing images for now
-                    delete itemToSave.images;
                     await updateDoc(doc(db, "items", id), itemToSave);
                 } else {
-                    if (imageUrls.length === 0) {
+                    if (!itemToSave.images || itemToSave.images.length === 0) {
                         return modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
                     }
                     itemToSave.createdAt = serverTimestamp();
@@ -1182,7 +1197,14 @@
                 card.appendChild(content);
 
                 const controlsContainer = card.querySelector('.item-controls');
-                if (state.isAuthenticated && state.user.uid === item.ownerId) {
+                if (item.affiliateLink) {
+                    const buyBtn = document.createElement('a');
+                    buyBtn.href = item.affiliateLink;
+                    buyBtn.target = "_blank";
+                    buyBtn.className = "buy-btn";
+                    buyBtn.textContent = "לרכישה";
+                    controlsContainer.appendChild(buyBtn);
+                } else if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'ערוך';
                     editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
@@ -1250,7 +1272,14 @@
                 card.appendChild(content);
                 
                 const controlsContainer = card.querySelector('.item-controls');
-                 if (state.isAuthenticated && state.user.uid === item.ownerId) {
+                 if (item.affiliateLink) {
+                    const buyBtn = document.createElement('a');
+                    buyBtn.href = item.affiliateLink;
+                    buyBtn.target = "_blank";
+                    buyBtn.className = "buy-btn";
+                    buyBtn.textContent = "לרכישה";
+                    controlsContainer.appendChild(buyBtn);
+                } else if (state.isAuthenticated && state.user.uid === item.ownerId) {
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'ערוך';
                     editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
@@ -1444,6 +1473,27 @@
             updateViewToggleButtons() {
                 a('#grid-view-btn').classList.toggle('active', state.viewMode === 'grid');
                 a('#feed-view-btn').classList.toggle('active', state.viewMode === 'feed');
+            },
+            renderImageUploadPreview() {
+                const previewContainer = a('#image-upload-preview');
+                previewContainer.innerHTML = '';
+                state.filesToUpload.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-image-container';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" class="preview-image">
+                            <button type="button" class="remove-image-btn" data-index="${index}">&times;</button>
+                        `;
+                        div.querySelector('.remove-image-btn').onclick = () => {
+                            state.filesToUpload.splice(index, 1);
+                            this.renderImageUploadPreview();
+                        };
+                        previewContainer.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                });
             }
         };
 
@@ -1455,12 +1505,12 @@
                 
                 a('#item-images').addEventListener('change', (e) => {
                     const files = Array.from(e.target.files);
-                    if (files.length > 6) {
+                    if (files.length + state.filesToUpload.length > 6) {
                         modals.showAlert("ניתן להעלות עד 6 תמונות בלבד.");
                         e.target.value = ""; // Clear the selection
                         return;
                     }
-                    state.filesToUpload = files;
+                    state.filesToUpload.push(...files);
                     views.renderImageUploadPreview();
                 });
 
@@ -1509,6 +1559,7 @@
             onAddItem() {
                 if (!state.isAuthenticated) return modals.open('auth-modal');
                 modals.clearItemForm();
+                b('.admin-only').forEach(el => el.classList.toggle('hidden', !state.isAdmin));
                 modals.open('item-modal');
             },
             onEditItem(itemId) {
@@ -1516,6 +1567,7 @@
                 if (item) {
                     a('#item-modal-title').textContent = 'ערוך פריט';
                     modals.populateItemForm(item);
+                    b('.admin-only').forEach(el => el.classList.toggle('hidden', !state.isAdmin));
                     modals.open('item-modal');
                 }
             },
@@ -1528,6 +1580,7 @@
                     price: parseFloat(a('#item-price').value),
                     category: a('#item-category').value,
                     phone: a('#item-phone').value,
+                    affiliateLink: a('#item-affiliate-link').value
                 };
                 saveItem(itemData, state.filesToUpload);
             }
