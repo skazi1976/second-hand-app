@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- הוראות למניעת שמירת מטמון (Cache) -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>סטייל מתגלגל</title>
+    <!-- Embed the manifest directly -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"סטייל מתגלגל","short_name":"סטייל","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#2c3e50","description":"A simple app to list and sell second-hand items.","icons":[{"src":"images/icons/icon-192x192.png","sizes":"192x192","type":"image/png"},{"src":"images/icons/icon-512x512.png","sizes":"512x512","type":"image/png"}]}'>
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <meta name="theme-color" content="#4a148c"> <!-- Updated theme color to match header -->
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --background-color: #f4f6f9;
+            --text-color: #34495e;
+            /* VISUAL CHANGE FOR TESTING: Header color is now purple */
+            --header-color: #4a148c; 
+            --card-bg-color: #ffffff;
+            --shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding-bottom: 60px; /* Footer height */
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--header-color);
+            color: white;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .header-center h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        #logo {
+            width: 40px;
+            height: 40px;
+        }
+        
+        #logo path {
+            stroke: white;
+        }
+
+        main {
+            padding: 1rem;
+        }
+
+        #controls-bar {
+            padding: 1rem;
+            background-color: #fff;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        #search-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #filter-buttons button, #view-toggle button {
+            padding: 10px 15px;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #filter-buttons button.hidden {
+            display: none;
+        }
+        #view-toggle button.active {
+            background-color: var(--secondary-color);
+        }
+
+
+        footer {
+            background-color: var(--header-color);
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        #gallery, #sellers-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            padding-top: 1rem;
+        }
+        
+        #feed-view {
+            max-width: 600px;
+            margin: 1rem auto;
+        }
+
+        .item-card {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .item-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .item-card-content {
+            padding: 1rem;
+            flex-grow: 1;
+        }
+
+        .item-card h3 {
+            margin-top: 0;
+        }
+        
+        .item-controls {
+            padding: 0 1rem 1rem 1rem;
+        }
+        
+        .item-controls button {
+            width: auto;
+            padding: 8px 12px;
+            margin-right: 10px;
+        }
+
+        /* Feed Item Styles */
+        .feed-item {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .feed-item-header {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+        }
+        .feed-item-seller-photo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        .feed-item-seller-name {
+            font-weight: bold;
+        }
+        .feed-item-image {
+            width: 100%;
+            max-height: 600px;
+            object-fit: cover;
+            display: block;
+        }
+        .feed-item-content {
+            padding: 1rem;
+        }
+        .feed-item-content h3 {
+            margin-top: 0;
+        }
+
+        /* Seller Card Styles */
+        .seller-card {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .seller-photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 1rem;
+        }
+        .seller-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        .item-count {
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+        .seller-card button {
+             width: 100%;
+             padding: 10px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 8px;
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px); } to { transform: translateY(0); } }
+
+        .close-button {
+            color: #aaa;
+            float: left; /* Adjusted for RTL */
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            left: 20px; /* Adjusted for RTL */
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Form Styles */
+        form label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        form input, form textarea, form button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+
+        form button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        form button:hover {
+            opacity: 0.9;
+        }
+
+        #auth-container {
+            flex: 1 0 auto;
+            text-align: left;
+        }
+        
+        #auth-container button {
+             margin: 5px;
+             padding: 10px 15px;
+        }
+
+        #user-info {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1 0 auto;
+        }
+        
+        #user-info span {
+            white-space: nowrap;
+        }
+
+        #add-item-btn {
+            position: fixed;
+            bottom: 80px; /* Above footer */
+            left: 20px; /* Adjusted for RTL */
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 30px;
+            line-height: 60px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: none; /* Hidden by default */
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+
+        /* Custom Alert/Confirm Modal */
+        #alert-modal-text, #confirm-modal-text {
+            margin-bottom: 20px;
+        }
+        #confirm-modal-buttons {
+            text-align: left;
+        }
+        #confirm-modal-buttons button {
+            width: auto;
+            margin-right: 10px;
+        }
+        #confirm-ok-btn {
+            background-color: var(--danger-color);
+        }
+        
+        .page-content {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 600px) {
+            .header-center h1 {
+                font-size: 1.2rem;
+            }
+            #user-info span {
+                display: none; /* Hide name on mobile */
+            }
+            #auth-container button {
+                padding: 8px 10px;
+            }
+            #controls-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            main {
+                padding: 0.5rem;
+            }
+            #feed-view {
+                margin: 0.5rem 0;
+            }
+            .modal-content {
+                margin: 5% auto;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        <div id="auth-container"></div>
+        <div class="header-center">
+             <svg id="logo" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6.3 8.4A6.4 6.4 0 0 1 12 2a6.4 6.4 0 0 1 5.7 6.4"></path>
+                <path d="M2 8.4h20"></path>
+                <path d="M18.7 8.4l-1.5 9.2A2 2 0 0 1 15.2 19H8.8a2 2 0 0 1-2-1.4L5.3 8.4"></path>
+            </svg>
+            <h1>סטייל מתגלגל</h1>
+        </div>
+        <div id="user-info"></div>
+    </header>
+
+    <main>
+        <div id="controls-bar">
+            <input type="search" id="search-input" placeholder="חפש פריטים...">
+            <div id="filter-buttons">
+                <button id="my-items-btn" class="hidden">הפריטים שלי</button>
+                <button id="sellers-btn">מוכרים</button>
+                <button id="all-items-btn" class="hidden">הצג הכל</button>
+            </div>
+            <!-- View Toggle Buttons -->
+            <div id="view-toggle">
+                <button id="grid-view-btn">רשת</button>
+                <button id="feed-view-btn" class="active">פיד</button>
+            </div>
+        </div>
+        <div id="gallery" class="hidden"></div>
+        <div id="sellers-gallery" class="hidden"></div>
+        <div id="feed-view"></div>
+    </main>
+
+    <footer>
+        <a href="#" id="terms-link">תנאי שימוש</a>
+        <a href="#" id="privacy-link">מדיניות פרטיות</a>
+    </footer>
+
+    <button id="add-item-btn" aria-label="הוסף פריט חדש">+</button>
+
+    <!-- Modals -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="item-modal">&times;</span>
+            <h2 id="item-modal-title">הוסף פריט חדש</h2>
+            <form id="item-form">
+                <input type="hidden" id="item-id">
+                <label for="item-title">כותרת</label>
+                <input type="text" id="item-title" required>
+                <label for="item-description">תיאור</label>
+                <textarea id="item-description" rows="4" required></textarea>
+                <label for="item-price">מחיר</label>
+                <input type="number" id="item-price" required>
+                <label for="item-image">תמונה (URL)</label>
+                <input type="url" id="item-image" required>
+                <img id="image-preview" src="" alt="תצוגה מקדימה של התמונה" style="max-width: 100%; margin-top: 10px; display: none;">
+                <button type="submit">שמור</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="auth-modal">&times;</span>
+            <h2>התחברות / הרשמה</h2>
+            <p>אנא התחבר כדי להוסיף ולנהל פריטים.</p>
+            <button id="login-google-btn">התחבר עם גוגל</button>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="alert-modal">&times;</span>
+            <h3 id="alert-modal-title">הודעה</h3>
+            <p id="alert-modal-text"></p>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="confirm-modal">&times;</span>
+            <h3>אישור פעולה</h3>
+            <p id="confirm-modal-text"></p>
+            <div id="confirm-modal-buttons">
+                <button id="confirm-ok-btn">אישור</button>
+                <button id="confirm-cancel-btn">ביטול</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="terms-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="terms-modal">&times;</span>
+            <h2>תנאי שימוש</h2>
+            <div class="page-content">
+                <p>ברוכים הבאים לאפליקציית סטייל מתגלגל. השימוש באפליקציה זו כפוף לתנאים ולהגבלות המפורטים להלן. על ידי שימוש באפליקקציה, אתה מסכים לתנאים אלה.</p>
+                <h4>1. שימוש באפליקציה</h4>
+                <p>האפליקציה מיועדת למכירה וקנייה של פריטי יד שנייה. אין להשתמש באפליקציה למטרות לא חוקיות או למכור פריטים אסורים.</p>
+                <h4>2. אחריות</h4>
+                <p>האחריות על הפריטים, איכותם, ותיאורם חלה על המוכר בלבד. הנהלת האפליקציה אינה אחראית לעסקאות שמתבצעות בין משתמשים.</p>
+                <h4>3. קניין רוחני</h4>
+                <p>כל הזכויות על האפליקציה, כולל עיצוב, קוד ותוכן, שמורות ליוצרי האפליקציה.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="privacy-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="privacy-modal">&times;</span>
+            <h2>מדיניות פרטיות</h2>
+            <div class="page-content">
+                 <p>אנו מכבדים את פרטיותך ומחויבים להגן עליה. מדיניות זו מתארת את סוגי המידע שאנו אוספים וכיצד אנו משתמשים בו.</p>
+                <h4>1. איסוף מידע</h4>
+                <p>אנו אוספים מידע שאתה מספק בעת ההרשמה, כגון שם וכתובת דוא"ל. אנו אוספים גם מידע על הפריטים שאתה מפרסם.</p>
+                <h4>2. שימוש במידע</h4>
+                <p>המידע משמש לתפעול האפליקציה, ליצירת קשר בינך לבין משתמשים אחרים, ולשיפור השירות שלנו.</p>
+                <h4>3. שיתוף מידע</h4>
+                <p>אנו לא נשתף את המידע האישי שלך עם צדדים שלישיים ללא הסכמתך, למעט במקרים הנדרשים על פי חוק.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // ==================================================================
+        // шаг 1: הגדרות FIREBASE
+        // Your web app's Firebase configuration
+        // ==================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDK0yKKGvh_I2xk-w4qmWrWBQrJmbCQkuA",
+            authDomain: "second-hand-app-2a0d3.firebaseapp.com",
+            projectId: "second-hand-app-2a0d3",
+            storageBucket: "second-hand-app-2a0d3.appspot.com",
+            messagingSenderId: "747252196826",
+            appId: "1:747252196826:web:41b5ea1eadbbe0049f0ce3",
+            measurementId: "G-RQH5E5H8JD"
+        };
+
+        // Import Firebase modules from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // DOM element selectors
+        const a = (selector) => document.querySelector(selector);
+        const b = (selector) => document.querySelectorAll(selector);
+
+        // Global state
+        const state = {
+            user: null,
+            items: [],
+            sellers: [], 
+            isAuthenticated: false,
+            viewMode: 'feed', // Default to feed view
+            filter: { type: 'all', term: '' }, // type can be 'all', 'search', 'my_items', 'all_sellers', 'by_seller'
+            listeners: {},
+            onChange(key, callback) {
+                if (!this.listeners[key]) this.listeners[key] = [];
+                this.listeners[key].push(callback);
+            },
+            update(key, value) {
+                console.log(`State update: ${key}`, value);
+                this[key] = value;
+                if (this.listeners[key]) {
+                    this.listeners[key].forEach(cb => cb(value));
+                }
+            }
+        };
+
+        // Firebase instances
+        let app, auth, db;
+
+        // --- MODAL & UI HELPERS ---
+        const modals = {
+            open: (id) => a(`#${id}`).style.display = 'block',
+            close: (id) => a(`#${id}`).style.display = 'none',
+            setup() {
+                b('.close-button').forEach(btn => btn.onclick = () => this.close(btn.dataset.modalId));
+                window.onclick = (e) => { if (e.target.classList.contains('modal')) this.close(e.target.id) };
+                a('#terms-link').onclick = (e) => { e.preventDefault(); this.open('terms-modal'); };
+                a('#privacy-link').onclick = (e) => { e.preventDefault(); this.open('privacy-modal'); };
+            },
+            showAlert(message, title = "הודעה") {
+                a('#alert-modal-title').textContent = title;
+                a('#alert-modal-text').textContent = message;
+                this.open('alert-modal');
+            },
+            showConfirm(message, onConfirm) {
+                a('#confirm-modal-text').textContent = message;
+                this.open('confirm-modal');
+                a('#confirm-ok-btn').onclick = () => {
+                    this.close('confirm-modal');
+                    onConfirm();
+                };
+                a('#confirm-cancel-btn').onclick = () => this.close('confirm-modal');
+            },
+            populateItemForm(item) {
+                a('#item-id').value = item.id || '';
+                a('#item-title').value = item.title || '';
+                a('#item-description').value = item.description || '';
+                a('#item-price').value = item.price || '';
+                a('#item-image').value = item.image || '';
+                const preview = a('#image-preview');
+                preview.src = item.image || '';
+                preview.style.display = item.image ? 'block' : 'none';
+            },
+            clearItemForm() {
+                a('#item-form').reset();
+                a('#item-id').value = '';
+                a('#image-preview').style.display = 'none';
+                a('#item-modal-title').textContent = 'הוסף פריט חדש';
+            }
+        };
+
+        // --- FIREBASE & AUTHENTICATION ---
+        async function initializeFirebase() {
+            try {
+                if (!firebaseConfig || firebaseConfig.apiKey === "YOUR_API_KEY") {
+                    modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
+                    return;
+                }
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                console.log("Firebase Initialized");
+                setupAuthObserver();
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                modals.showAlert("Could not initialize Firebase.", "Error");
+            }
+        }
+
+        function setupAuthObserver() {
+            onAuthStateChanged(auth, (user) => {
+                if (user && !user.isAnonymous) {
+                    const { uid, displayName, email, photoURL } = user;
+                    state.update('user', { uid, displayName, email, photoURL });
+                    state.update('isAuthenticated', true);
+                } else {
+                    state.update('user', null);
+                    state.update('isAuthenticated', false);
+                    if (!auth.currentUser) {
+                        signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+                    }
+                }
+                fetchItemsFromFirestore();
+            });
+        }
+
+        async function signInWithGoogle() {
+            if (!auth) return modals.showAlert("Auth not ready.", "Error");
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+                modals.close('auth-modal');
+            } catch (error) {
+                console.error("Google Sign-In Error:", error);
+                modals.showAlert("Google Sign-In failed.", "Error");
+            }
+        }
+
+        function signOut() {
+            if (auth) firebaseSignOut(auth);
+        }
+
+        // --- DATA PROCESSING & FIRESTORE ---
+        function processSellers(items) {
+            const sellers = items.reduce((acc, item) => {
+                if (item.ownerId && !acc[item.ownerId]) {
+                    acc[item.ownerId] = {
+                        id: item.ownerId,
+                        name: item.ownerName,
+                        photo: item.ownerPhoto,
+                        itemCount: 0
+                    };
+                }
+                if(item.ownerId) {
+                    acc[item.ownerId].itemCount++;
+                }
+                return acc;
+            }, {});
+            state.update('sellers', Object.values(sellers));
+        }
+
+        let unsubscribeFromItems;
+        function fetchItemsFromFirestore() {
+            if (!db) return;
+            if (unsubscribeFromItems) unsubscribeFromItems();
+            
+            const itemsCollection = collection(db, "items");
+            const q = query(itemsCollection, orderBy("createdAt", "desc"));
+            
+            unsubscribeFromItems = onSnapshot(q, (snapshot) => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                state.update('items', items);
+            }, (err) => {
+                console.error("Firestore Error:", err);
+                modals.showAlert("Error fetching items.", "Error");
+            });
+        }
+
+        async function saveItem(itemData) {
+            if (!db || !state.isAuthenticated || !state.user) {
+                return modals.showAlert("You must be logged in to save items.", "Error");
+            }
+
+            const collectionRef = collection(db, "items");
+            const { id, ...data } = itemData;
+            const itemToSave = {
+                ...data,
+                ownerId: state.user.uid,
+                ownerName: state.user.displayName,
+                ownerPhoto: state.user.photoURL,
+            };
+
+            try {
+                if (id) {
+                    await updateDoc(doc(db, "items", id), itemToSave);
+                } else {
+                    itemToSave.createdAt = serverTimestamp();
+                    await addDoc(collectionRef, itemToSave);
+                }
+                modals.close('item-modal');
+            } catch (error) {
+                console.error("Save Item Error:", error);
+                modals.showAlert("Failed to save item.", "Error");
+            }
+        }
+
+        async function deleteItem(itemId) {
+            if (!db || !state.isAuthenticated) {
+                return modals.showAlert("You must be logged in.", "Error");
+            }
+            modals.showConfirm("האם אתה בטוח שברצונך למחוק פריט זה?", async () => {
+                try {
+                    await deleteDoc(doc(db, "items", itemId));
+                } catch (error) {
+                    console.error("Delete Item Error:", error);
+                    modals.showAlert("Failed to delete item.", "Error");
+                }
+            });
+        }
+
+        // --- UI COMPONENTS & RENDERING ---
+        const components = {
+            itemCard(item) {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.dataset.id = item.id;
+                card.innerHTML = `
+                    <img src="${item.image}" alt="${item.title}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
+                    <div class="item-card-content">
+                        <h3>${item.title}</h3>
+                        <p>${item.description}</p>
+                        <p><strong>מחיר:</strong> ₪${item.price}</p>
+                    </div>
+                `;
+                if (state.isAuthenticated && state.user.uid === item.ownerId) {
+                    const controls = document.createElement('div');
+                    controls.className = 'item-controls';
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'ערוך';
+                    editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'מחק';
+                    deleteBtn.style.backgroundColor = 'var(--danger-color)';
+                    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
+                    controls.appendChild(editBtn);
+                    controls.appendChild(deleteBtn);
+                    card.appendChild(controls);
+                }
+                return card;
+            },
+            feedItemCard(item) {
+                const card = document.createElement('div');
+                card.className = 'feed-item';
+                card.dataset.id = item.id;
+                card.innerHTML = `
+                    <div class="feed-item-header">
+                        <img src="${item.ownerPhoto || 'https://placehold.co/40x40/ecf0f1/34495e?text=?'}" alt="${item.ownerName}" class="feed-item-seller-photo">
+                        <span class="feed-item-seller-name">${item.ownerName || 'אלמוני'}</span>
+                    </div>
+                    <img src="${item.image}" alt="${item.title}" class="feed-item-image" onerror="this.onerror=null;this.src='https://placehold.co/600x400/ecf0f1/34495e?text=No+Image';">
+                    <div class="feed-item-content">
+                        <h3>${item.title}</h3>
+                        <p>${item.description}</p>
+                        <p><strong>מחיר:</strong> ₪${item.price}</p>
+                    </div>
+                `;
+                 if (state.isAuthenticated && state.user.uid === item.ownerId) {
+                    const controls = document.createElement('div');
+                    controls.className = 'item-controls';
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'ערוך';
+                    editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'מחק';
+                    deleteBtn.style.backgroundColor = 'var(--danger-color)';
+                    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
+                    controls.appendChild(editBtn);
+                    controls.appendChild(deleteBtn);
+                    card.querySelector('.feed-item-content').appendChild(controls);
+                }
+                return card;
+            },
+            sellerCard(seller) {
+                const card = document.createElement('div');
+                card.className = 'seller-card';
+                card.innerHTML = `
+                    <img src="${seller.photo || 'https://placehold.co/80x80/ecf0f1/34495e?text=?'}" alt="${seller.name}" class="seller-photo">
+                    <div class="seller-name">${seller.name}</div>
+                    <div class="item-count">${seller.itemCount} פריטים</div>
+                    <button class="view-seller-items-btn" data-seller-id="${seller.id}">הצג פריטים</button>
+                `;
+                card.querySelector('.view-seller-items-btn').addEventListener('click', (e) => {
+                    const sellerId = e.target.dataset.sellerId;
+                    state.update('filter', { type: 'by_seller', term: sellerId });
+                });
+                return card;
+            },
+            authUI() {
+                const authContainer = a('#auth-container');
+                const userInfoContainer = a('#user-info');
+                if (state.isAuthenticated) {
+                    authContainer.innerHTML = `<button id="logout-btn">התנתק</button>`;
+                    userInfoContainer.innerHTML = `
+                        <span>שלום, ${state.user.displayName}</span>
+                        <img src="${state.user.photoURL}" alt="תמונת פרופיל" style="width: 40px; border-radius: 50%; vertical-align: middle; margin-right: 10px;">`;
+                } else {
+                    authContainer.innerHTML = `<button id="login-btn">התחבר</button>`;
+                    userInfoContainer.innerHTML = '';
+                }
+                events.attachAuthListeners();
+            }
+        };
+
+        const views = {
+            getFilteredItems() {
+                const { type, term } = state.filter;
+                if (type === 'search') {
+                    return state.items.filter(item => 
+                        item.title.toLowerCase().includes(term.toLowerCase())
+                    );
+                } else if (type === 'my_items' && state.user) {
+                    return state.items.filter(item => item.ownerId === state.user.uid);
+                } else if (type === 'by_seller') {
+                    return state.items.filter(item => item.ownerId === term);
+                }
+                return state.items;
+            },
+            renderItemsGallery() {
+                const gallery = a('#gallery');
+                gallery.innerHTML = '';
+                const itemsToShow = this.getFilteredItems();
+
+                if (itemsToShow.length === 0) {
+                    gallery.innerHTML = '<p>לא נמצאו פריטים.</p>';
+                } else {
+                    itemsToShow.forEach(item => gallery.appendChild(components.itemCard(item)));
+                }
+            },
+            renderFeedView() {
+                const feed = a('#feed-view');
+                feed.innerHTML = '';
+                const itemsToShow = this.getFilteredItems();
+
+                if (itemsToShow.length === 0) {
+                    feed.innerHTML = '<p>לא נמצאו פריטים.</p>';
+                } else {
+                    itemsToShow.forEach(item => feed.appendChild(components.feedItemCard(item)));
+                }
+            },
+            renderSellersGallery() {
+                const gallery = a('#sellers-gallery');
+                gallery.innerHTML = '';
+                if (state.sellers.length === 0) {
+                    gallery.innerHTML = '<p>אין מוכרים להצגה.</p>';
+                } else {
+                    state.sellers.forEach(seller => gallery.appendChild(components.sellerCard(seller)));
+                }
+            },
+            renderCurrentView() {
+                const { type } = state.filter;
+                const isSellersView = type === 'all_sellers';
+                
+                a('#sellers-gallery').classList.toggle('hidden', !isSellersView);
+                a('#search-input').classList.toggle('hidden', isSellersView);
+                a('#view-toggle').classList.toggle('hidden', isSellersView);
+
+                if (isSellersView) {
+                    a('#gallery').classList.add('hidden');
+                    a('#feed-view').classList.add('hidden');
+                    this.renderSellersGallery();
+                } else {
+                    const isGridView = state.viewMode === 'grid';
+                    a('#gallery').classList.toggle('hidden', !isGridView);
+                    a('#feed-view').classList.toggle('hidden', isGridView);
+                    if (isGridView) {
+                        this.renderItemsGallery();
+                    } else {
+                        this.renderFeedView();
+                    }
+                }
+            },
+            renderAuthUI() {
+                components.authUI();
+            },
+            updateFilterButtons() {
+                const myItemsBtn = a('#my-items-btn');
+                const allItemsBtn = a('#all-items-btn');
+                const sellersBtn = a('#sellers-btn');
+                
+                myItemsBtn.classList.toggle('hidden', !state.isAuthenticated);
+                
+                const showAllButton = state.filter.type !== 'all';
+                allItemsBtn.classList.toggle('hidden', !showAllButton);
+                
+                sellersBtn.classList.toggle('hidden', showAllButton);
+            },
+            updateViewToggleButtons() {
+                a('#grid-view-btn').classList.toggle('active', state.viewMode === 'grid');
+                a('#feed-view-btn').classList.toggle('active', state.viewMode === 'feed');
+            }
+        };
+
+        // --- EVENT HANDLING ---
+        const events = {
+            setup() {
+                a('#add-item-btn').addEventListener('click', this.onAddItem);
+                a('#item-form').addEventListener('submit', this.onSaveItem);
+                a('#item-image').addEventListener('input', (e) => {
+                    const preview = a('#image-preview');
+                    if (e.target.value) {
+                        preview.src = e.target.value;
+                        preview.style.display = 'block';
+                    } else {
+                        preview.style.display = 'none';
+                    }
+                });
+
+                a('#search-input').addEventListener('input', (e) => {
+                    state.update('filter', { type: 'search', term: e.target.value });
+                });
+
+                a('#my-items-btn').addEventListener('click', () => {
+                    state.update('filter', { type: 'my_items', term: '' });
+                });
+                
+                a('#sellers-btn').addEventListener('click', () => {
+                    state.update('filter', { type: 'all_sellers', term: '' });
+                });
+
+                a('#all-items-btn').addEventListener('click', () => {
+                    state.update('filter', { type: 'all', term: '' });
+                });
+
+                // View toggle events
+                a('#grid-view-btn').addEventListener('click', () => state.update('viewMode', 'grid'));
+                a('#feed-view-btn').addEventListener('click', () => state.update('viewMode', 'feed'));
+            },
+            attachAuthListeners() {
+                const loginBtn = a('#login-btn');
+                const logoutBtn = a('#logout-btn');
+                const loginGoogleBtn = a('#login-google-btn');
+                if (loginBtn) loginBtn.onclick = () => modals.open('auth-modal');
+                if (logoutBtn) logoutBtn.onclick = () => signOut();
+                if (loginGoogleBtn) loginGoogleBtn.onclick = () => signInWithGoogle();
+            },
+            onAddItem() {
+                if (!state.isAuthenticated) return modals.open('auth-modal');
+                
