@@ -185,6 +185,7 @@
         .item-controls {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
         
         .item-controls button, .item-controls a {
@@ -276,7 +277,7 @@
             align-items: center;
             margin-top: 1rem;
         }
-        .like-button {
+        .like-button, .report-button {
             display: flex;
             align-items: center;
             gap: 5px;
@@ -293,6 +294,11 @@
         }
         .like-button.liked svg {
             fill: var(--danger-color);
+        }
+        .report-button svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-color);
         }
 
         /* Seller Card Styles */
