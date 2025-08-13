@@ -1104,6 +1104,7 @@
             });
         }
 
+        // FIXED: Improved error handling to show specific Cloudinary error messages.
         async function uploadImagesToCloudinary(files) {
             const uploadPromises = files.map(file => {
                 const formData = new FormData();
@@ -1114,18 +1115,26 @@
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        // If response is not ok, parse the error JSON from Cloudinary
+                        return response.json().then(err => { throw new Error(err.error.message); });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.secure_url) {
                         return data.secure_url;
                     } else {
-                        throw new Error('Cloudinary upload failed');
+                        console.error("Cloudinary upload failed with unexpected data structure:", data);
+                        throw new Error('תגובה לא צפויה מ-Cloudinary');
                     }
                 });
             });
             return Promise.all(uploadPromises);
         }
 
+        // FIXED: Simplified logic and improved error handling.
         async function saveItem(itemData, files) {
             if (!db || !state.isAuthenticated || !state.user) {
                 modals.showAlert("You must be logged in to save items.", "Error");
@@ -1135,12 +1144,7 @@
             modals.open('loading-modal'); 
             
             try {
-                const imageUrls = await uploadImagesToCloudinary(files);
-
-                if (files.length > 0 && (!imageUrls || imageUrls.length === 0)) {
-                    modals.showAlert("העלאת התמונות נכשלה.", "שגיאה");
-                    return; 
-                }
+                const imageUrls = files.length > 0 ? await uploadImagesToCloudinary(files) : [];
 
                 const collectionRef = collection(db, "items");
                 const { id, ...data } = itemData;
@@ -1160,6 +1164,7 @@
                 } else {
                     if (!itemToSave.images || itemToSave.images.length === 0) {
                         modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
+                        modals.close('loading-modal'); // Close loading modal on validation failure
                         return; 
                     }
                     itemToSave.createdAt = serverTimestamp();
@@ -1171,7 +1176,7 @@
 
             } catch (error) {
                 console.error("Save Item Error:", error);
-                modals.showAlert(`שמירת הפריט נכשלה: ${error.message}`, "שגיאה");
+                modals.showAlert(`שגיאה בהעלאת תמונות: ${error.message}`, "שגיאה");
             } finally {
                 modals.close('loading-modal');
             }
