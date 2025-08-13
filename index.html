@@ -13,7 +13,7 @@
     <!-- Embed the manifest directly -->
     <link rel="manifest" href='data:application/manifest+json,{"name":"סטייל מתגלגל","short_name":"סטייל","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#2c3e50","description":"A simple app to list and sell second-hand items.","icons":[{"src":"images/icons/icon-192x192.png","sizes":"192x192","type":"image/png"},{"src":"images/icons/icon-512x512.png","sizes":"512x512","type":"image/png"}]}'>
     <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
-    <meta name="theme-color" content="#4a148c"> <!-- Updated theme color to match header -->
+    <meta name="theme-color" content="#2c3e50">
     <style>
         :root {
             --primary-color: #3498db;
@@ -21,8 +21,7 @@
             --danger-color: #e74c3c;
             --background-color: #f4f6f9;
             --text-color: #34495e;
-            /* VISUAL CHANGE FOR TESTING: Header color is now purple */
-            --header-color: #4a148c; 
+            --header-color: #2c3e50; 
             --card-bg-color: #ffffff;
             --shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
@@ -413,7 +412,7 @@
     <header>
         <div id="auth-container"></div>
         <div class="header-center">
-             <svg id="logo" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+             <svg id="logo" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6.3 8.4A6.4 6.4 0 0 1 12 2a6.4 6.4 0 0 1 5.7 6.4"></path>
                 <path d="M2 8.4h20"></path>
                 <path d="M18.7 8.4l-1.5 9.2A2 2 0 0 1 15.2 19H8.8a2 2 0 0 1-2-1.4L5.3 8.4"></path>
@@ -978,4 +977,66 @@
             },
             onAddItem() {
                 if (!state.isAuthenticated) return modals.open('auth-modal');
-                
+                modals.clearItemForm();
+                modals.open('item-modal');
+            },
+            onEditItem(itemId) {
+                const item = state.items.find(i => i.id === itemId);
+                if (item) {
+                    a('#item-modal-title').textContent = 'ערוך פריט';
+                    modals.populateItemForm(item);
+                    modals.open('item-modal');
+                }
+            },
+            onSaveItem(e) {
+                e.preventDefault();
+                saveItem({
+                    id: a('#item-id').value,
+                    title: a('#item-title').value,
+                    description: a('#item-description').value,
+                    price: parseFloat(a('#item-price').value),
+                    image: a('#item-image').value
+                });
+            }
+        };
+
+        // --- APP INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("App starting...");
+            initializeFirebase();
+            modals.setup();
+            events.setup();
+
+            state.onChange('isAuthenticated', (isAuth) => {
+                views.renderAuthUI();
+                views.updateFilterButtons();
+                a('#add-item-btn').style.display = isAuth ? 'block' : 'none';
+                if (!isAuth) {
+                    state.update('filter', { type: 'all', term: '' });
+                }
+            });
+
+            state.onChange('items', () => {
+                processSellers(state.items);
+                views.renderCurrentView();
+            });
+            
+            state.onChange('filter', () => {
+                views.renderCurrentView();
+                views.updateFilterButtons();
+            });
+            
+            state.onChange('viewMode', () => {
+                views.renderCurrentView();
+                views.updateViewToggleButtons();
+            });
+
+            // Initial render
+            views.renderAuthUI();
+            views.renderCurrentView();
+            views.updateFilterButtons();
+            views.updateViewToggleButtons();
+        });
+    </script>
+</body>
+</html>
