@@ -53,6 +53,7 @@
             align-items: center;
             gap: 10px;
             justify-content: center;
+            flex-grow: 1;
         }
 
         .header-center h1 {
@@ -462,23 +463,26 @@
             text-align: left;
             display: flex;
             align-items: center;
+            gap: 10px;
         }
         
         #auth-container button {
-             margin: 5px;
+             margin: 0;
              padding: 10px 15px;
         }
 
-        #messages-btn {
+        #messages-btn, #notifications-btn {
             background: none;
             border: none;
             cursor: pointer;
             padding: 5px;
+            position: relative;
         }
-        #messages-btn svg {
+        #messages-btn svg, #notifications-btn svg {
             width: 28px;
             height: 28px;
             stroke: white;
+            fill: none;
         }
 
         #user-info {
@@ -550,6 +554,63 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Notifications Styles */
+        #notification-container {
+            position: relative;
+        }
+        #notification-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            padding: 1px 5px;
+            font-size: 10px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #notifications-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1100;
+            border: 1px solid #ddd;
+        }
+        .notification-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+        .notification-item.unread {
+            background-color: #ecf0f1;
+        }
+        .notification-item p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .notification-item .timestamp {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+
 
         /* Messaging Styles */
         .conversation-list-item {
@@ -835,7 +896,7 @@
         // Import Firebase modules from CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const ADMIN_EMAIL = "ohadf1976@gmail.com";
 
@@ -849,6 +910,8 @@
             items: [],
             sellers: [], 
             conversations: [],
+            notifications: [],
+            unreadNotifications: 0,
             isAuthenticated: false,
             isAdmin: false,
             viewMode: 'feed', 
@@ -897,7 +960,16 @@
             close: (id) => a(`#${id}`).style.display = 'none',
             setup() {
                 b('.close-button').forEach(btn => btn.onclick = () => this.close(btn.dataset.modalId));
-                window.onclick = (e) => { if (e.target.classList.contains('modal')) this.close(e.target.id) };
+                window.onclick = (e) => { 
+                    if (e.target.classList.contains('modal')) {
+                        this.close(e.target.id);
+                    }
+                    // Close notifications dropdown if clicked outside
+                    const dropdown = a('#notifications-dropdown');
+                    if (dropdown && !dropdown.classList.contains('hidden') && !a('#notification-container').contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                };
                 a('#terms-link').onclick = (e) => { e.preventDefault(); this.open('terms-modal'); };
                 a('#privacy-link').onclick = (e) => { e.preventDefault(); this.open('privacy-modal'); };
             },
@@ -938,7 +1010,7 @@
         // --- FIREBASE & AUTHENTICATION ---
         async function initializeFirebase() {
             try {
-                if (!firebaseConfig || firebaseConfig.apiKey === "YOUR_API_KEY") {
+                if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("AIza")) {
                     modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
                     return;
                 }
@@ -961,10 +1033,15 @@
                     state.update('isAuthenticated', true);
                     state.update('isAdmin', email === ADMIN_EMAIL);
                     fetchConversations();
+                    fetchNotifications();
                 } else {
                     state.update('user', null);
                     state.update('isAuthenticated', false);
                     state.update('isAdmin', false);
+                    if (unsubscribeFromConversations) unsubscribeFromConversations();
+                    if (unsubscribeFromNotifications) unsubscribeFromNotifications();
+                    state.update('conversations', []);
+                    state.update('notifications', []);
                     if (!auth.currentUser) {
                         signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
                     }
@@ -1047,22 +1124,20 @@
             return Promise.all(uploadPromises);
         }
 
-        // FIXED: The save item process now uses a dedicated loading modal that always closes.
         async function saveItem(itemData, files) {
             if (!db || !state.isAuthenticated || !state.user) {
                 modals.showAlert("You must be logged in to save items.", "Error");
                 return;
             }
             
-            modals.open('loading-modal'); // Open dedicated loading modal
+            modals.open('loading-modal'); 
             
             try {
                 const imageUrls = await uploadImagesToCloudinary(files);
 
-                // Check for upload failure
                 if (files.length > 0 && (!imageUrls || imageUrls.length === 0)) {
                     modals.showAlert("העלאת התמונות נכשלה.", "שגיאה");
-                    return; // Keep the item form open to allow retry
+                    return; 
                 }
 
                 const collectionRef = collection(db, "items");
@@ -1074,7 +1149,6 @@
                     ownerPhoto: state.user.photoURL,
                 };
                 
-                // This logic is simplified. A full implementation would handle adding/removing existing images.
                 if (imageUrls.length > 0) {
                     itemToSave.images = imageUrls;
                 }
@@ -1084,21 +1158,19 @@
                 } else {
                     if (!itemToSave.images || itemToSave.images.length === 0) {
                         modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
-                        return; // Keep the item form open
+                        return; 
                     }
                     itemToSave.createdAt = serverTimestamp();
                     itemToSave.likes = [];
                     await addDoc(collectionRef, itemToSave);
                 }
                 
-                // On success, close the item form modal.
                 modals.close('item-modal');
 
             } catch (error) {
                 console.error("Save Item Error:", error);
                 modals.showAlert(`שמירת הפריט נכשלה: ${error.message}`, "שגיאה");
             } finally {
-                // ALWAYS close the loading modal, preventing it from getting stuck.
                 modals.close('loading-modal');
             }
         }
@@ -1128,6 +1200,13 @@
                 await updateDoc(itemRef, {
                     likes: userLiked ? arrayRemove(state.user.uid) : arrayUnion(state.user.uid)
                 });
+                // Create notification on like
+                if (!userLiked && item.ownerId !== state.user.uid) {
+                    createNotification(
+                        item.ownerId,
+                        `${state.user.displayName} אהב/ה את הפריט שלך: "${item.title}"`
+                    );
+                }
             } catch (error) {
                 console.error("Error toggling like:", error);
                 modals.showAlert("לא ניתן היה לעדכן את הלייק.");
@@ -1151,6 +1230,52 @@
                     modals.showAlert("שליחת הדיווח נכשלה.");
                 }
             });
+        }
+
+        // --- NOTIFICATIONS ---
+        async function createNotification(targetUserId, text) {
+            if (!db || !targetUserId || targetUserId === state.user.uid) return;
+            try {
+                const notificationsCol = collection(db, `users/${targetUserId}/notifications`);
+                await addDoc(notificationsCol, {
+                    text,
+                    createdAt: serverTimestamp(),
+                    read: false
+                });
+            } catch (error) {
+                console.error("Error creating notification:", error);
+            }
+        }
+
+        let unsubscribeFromNotifications;
+        function fetchNotifications() {
+            if (!db || !state.user) return;
+            if (unsubscribeFromNotifications) unsubscribeFromNotifications();
+
+            const q = query(collection(db, `users/${state.user.uid}/notifications`), orderBy("createdAt", "desc"));
+            unsubscribeFromNotifications = onSnapshot(q, (snapshot) => {
+                const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const unreadCount = notifications.filter(n => !n.read).length;
+                state.update('notifications', notifications);
+                state.update('unreadNotifications', unreadCount);
+            }, (error) => {
+                console.error("Error fetching notifications:", error);
+            });
+        }
+
+        async function markNotificationsAsRead() {
+            if (!db || !state.user || state.unreadNotifications === 0) return;
+            const unread = state.notifications.filter(n => !n.read);
+            const batch = writeBatch(db);
+            unread.forEach(n => {
+                const notifRef = doc(db, `users/${state.user.uid}/notifications`, n.id);
+                batch.update(notifRef, { read: true });
+            });
+            try {
+                await batch.commit();
+            } catch (error) {
+                console.error("Error marking notifications as read:", error);
+            }
         }
 
         // --- MESSAGING ---
@@ -1201,9 +1326,17 @@
                 senderId: state.user.uid,
                 timestamp: serverTimestamp()
             });
+             // Notify the other user
+            const convo = state.conversations.find(c => c.id === conversationId);
+            if (convo) {
+                const otherParticipantId = Object.keys(convo.participants).find(id => id !== state.user.uid);
+                createNotification(
+                    otherParticipantId,
+                    `הודעה חדשה מ-${state.user.displayName} בנוגע ל: ${convo.itemTitle}`
+                );
+            }
         }
 
-        // FIXED: Added error handling to this function
         async function startOrGetConversation(item) {
             if (!db || !state.user) return modals.open('auth-modal');
             
@@ -1317,8 +1450,6 @@
                     controlsContainer.appendChild(editBtn);
                     controlsContainer.appendChild(deleteBtn);
                 } else if (state.isAuthenticated) {
-                    // UPDATED: Logic for WhatsApp and Message buttons
-                    // WhatsApp button (shows only if seller provided a phone number)
                     if (item.phone) {
                         const whatsappBtn = document.createElement('a');
                         whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
@@ -1329,14 +1460,12 @@
                         controlsContainer.appendChild(whatsappBtn);
                     }
                     
-                    // Internal message button (always shows for logged-in non-owners)
                     const contactBtn = document.createElement('button');
                     contactBtn.className = "btn btn-primary";
                     contactBtn.textContent = 'הודעה';
                     contactBtn.title = "שלח הודעה בתוך האפליקציה";
                     contactBtn.onclick = (e) => { 
                         e.stopPropagation(); 
-                        // This function opens the internal chat modal
                         startOrGetConversation(item); 
                     };
                     controlsContainer.appendChild(contactBtn);
@@ -1416,8 +1545,6 @@
                     controlsContainer.appendChild(editBtn);
                     controlsContainer.appendChild(deleteBtn);
                 } else if (state.isAuthenticated) {
-                    // UPDATED: Logic for WhatsApp and Message buttons
-                    // WhatsApp button (shows only if seller provided a phone number)
                     if (item.phone) {
                         const whatsappBtn = document.createElement('a');
                         whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
@@ -1428,14 +1555,12 @@
                         controlsContainer.appendChild(whatsappBtn);
                     }
                     
-                    // Internal message button (always shows for logged-in non-owners)
                     const contactBtn = document.createElement('button');
                     contactBtn.className = "btn btn-primary";
                     contactBtn.textContent = 'הודעה';
                     contactBtn.title = "שלח הודעה בתוך האפליקציה";
                     contactBtn.onclick = (e) => { 
                         e.stopPropagation(); 
-                        // This function opens the internal chat modal
                         startOrGetConversation(item); 
                     };
                     controlsContainer.appendChild(contactBtn);
@@ -1479,21 +1604,37 @@
                 item.onclick = () => openChat(convo);
                 return item;
             },
+            notificationItem(notification) {
+                const item = document.createElement('div');
+                item.className = `notification-item ${notification.read ? '' : 'unread'}`;
+                item.innerHTML = `
+                    <p>${notification.text}</p>
+                    <div class="timestamp">${formatTimeAgo(notification.createdAt)}</div>
+                `;
+                item.onclick = () => {
+                    // Handle click (e.g., navigate)
+                    a('#notifications-dropdown').classList.add('hidden');
+                };
+                return item;
+            },
             authUI() {
                 const authContainer = a('#auth-container');
                 const userInfoContainer = a('#user-info');
                 authContainer.innerHTML = ''; // Clear previous
                 if (state.isAuthenticated) {
-                    const messagesBtn = document.createElement('button');
-                    messagesBtn.id = 'messages-btn';
-                    messagesBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
-                    messagesBtn.onclick = () => modals.open('messages-modal');
-                    authContainer.appendChild(messagesBtn);
-
-                    const logoutBtn = document.createElement('button');
-                    logoutBtn.id = 'logout-btn';
-                    logoutBtn.textContent = 'התנתק';
-                    authContainer.appendChild(logoutBtn);
+                    authContainer.innerHTML = `
+                        <button id="messages-btn" title="הודעות">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        </button>
+                        <div id="notification-container">
+                            <button id="notifications-btn" title="התראות">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                <span id="notification-badge" class="hidden"></span>
+                            </button>
+                            <div id="notifications-dropdown" class="hidden"></div>
+                        </div>
+                        <button id="logout-btn">התנתק</button>
+                    `;
 
                     userInfoContainer.innerHTML = `
                         <span>שלום, ${state.user.displayName}</span>
@@ -1509,7 +1650,6 @@
             }
         };
 
-        // FIXED: Removed duplicate views object definition
         const views = {
             getFilteredItems() {
                 const { type, term } = state.filter;
@@ -1568,6 +1708,26 @@
                     state.conversations.forEach(convo => list.appendChild(components.conversationListItem(convo)));
                 }
             },
+            renderNotifications() {
+                const dropdown = a('#notifications-dropdown');
+                if (!dropdown) return;
+                dropdown.innerHTML = '';
+                if (state.notifications.length === 0) {
+                    dropdown.innerHTML = '<div class="notification-item"><p>אין התראות חדשות.</p></div>';
+                } else {
+                    state.notifications.forEach(n => dropdown.appendChild(components.notificationItem(n)));
+                }
+            },
+            updateNotificationBadge() {
+                const badge = a('#notification-badge');
+                if (!badge) return;
+                if (state.unreadNotifications > 0) {
+                    badge.textContent = state.unreadNotifications;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            },
             renderCurrentView() {
                 const { type } = state.filter;
                 const isSellersView = type === 'all_sellers';
@@ -1603,10 +1763,10 @@
                 
                 myItemsBtn.classList.toggle('hidden', !state.isAuthenticated);
                 
-                const showAllButton = state.filter.type !== 'all';
+                const showAllButton = state.filter.type !== 'all' && state.filter.type !== 'all_sellers';
                 allItemsBtn.classList.toggle('hidden', !showAllButton);
                 
-                sellersBtn.classList.toggle('hidden', showAllButton);
+                sellersBtn.classList.toggle('hidden', showAllButton || state.filter.type === 'all_sellers');
             },
             updateViewToggleButtons() {
                 a('#grid-view-btn').classList.toggle('active', state.viewMode === 'grid');
@@ -1687,12 +1847,22 @@
             },
             attachAuthListeners() {
                 const loginBtn = a('#login-btn');
-                const logoutBtn = a('#logout-btn');
                 if (loginBtn) loginBtn.onclick = () => modals.open('auth-modal');
-                if (logoutBtn) logoutBtn.onclick = () => signOut();
-                // Google login is in its own modal
+                
                 const loginGoogleBtn = a('#login-google-btn');
                 if(loginGoogleBtn) loginGoogleBtn.onclick = () => signInWithGoogle();
+
+                if (state.isAuthenticated) {
+                    a('#logout-btn').onclick = () => signOut();
+                    a('#messages-btn').onclick = () => modals.open('messages-modal');
+                    a('#notifications-btn').onclick = () => {
+                        const dropdown = a('#notifications-dropdown');
+                        dropdown.classList.toggle('hidden');
+                        if (!dropdown.classList.contains('hidden')) {
+                            markNotificationsAsRead();
+                        }
+                    };
+                }
             },
             onAddItem() {
                 if (!state.isAuthenticated) return modals.open('auth-modal');
@@ -1735,11 +1905,6 @@
                 views.renderAuthUI();
                 views.updateFilterButtons();
                 a('#add-item-btn').style.display = isAuth ? 'block' : 'none';
-                if (!isAuth) {
-                    state.update('filter', { type: 'all', term: '' });
-                    if (unsubscribeFromConversations) unsubscribeFromConversations();
-                    state.update('conversations', []);
-                }
             });
 
             state.onChange('items', () => {
@@ -1749,6 +1914,9 @@
             
             state.onChange('conversations', () => views.renderConversationsList());
             
+            state.onChange('notifications', () => views.renderNotifications());
+            state.onChange('unreadNotifications', () => views.updateNotificationBadge());
+
             state.onChange('filter', () => {
                 views.renderCurrentView();
                 views.updateFilterButtons();
