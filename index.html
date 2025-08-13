@@ -1010,7 +1010,8 @@
         // --- FIREBASE & AUTHENTICATION ---
         async function initializeFirebase() {
             try {
-                if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("AIza")) {
+                // FIXED: Removed faulty API key check that prevented initialization.
+                if (!firebaseConfig || !firebaseConfig.apiKey) {
                     modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
                     return;
                 }
@@ -1628,7 +1629,7 @@
                         </button>
                         <div id="notification-container">
                             <button id="notifications-btn" title="התראות">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                                 <span id="notification-badge" class="hidden"></span>
                             </button>
                             <div id="notifications-dropdown" class="hidden"></div>
