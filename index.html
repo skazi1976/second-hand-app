@@ -1378,12 +1378,17 @@
 
         // --- PUSH NOTIFICATIONS SETUP ---
         async function setupPushNotifications() {
-            if (!state.user || !('serviceWorker' in navigator)) return;
+            if (!state.user || !('serviceWorker' in navigator)) {
+                console.log("Push notifications not supported or user not logged in.");
+                return;
+            }
 
             const messaging = getMessaging(app);
 
             try {
                 const permission = await Notification.requestPermission();
+                console.log('Notification permission status:', permission);
+
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
 
