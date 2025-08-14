@@ -96,7 +96,7 @@
             color: white;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color: 0.2s;
+            transition: background-color 0.2s;
         }
         #install-app-btn {
              background-color: var(--secondary-color);
@@ -1032,6 +1032,7 @@
             onAuthStateChanged(auth, (user) => {
                 if (user && !user.isAnonymous) {
                     const { uid, displayName, email, photoURL } = user;
+                    console.log(`Logged in User ID (uid): ${uid}`); // For debugging
                     state.update('user', { uid, displayName, email, photoURL });
                     state.update('isAuthenticated', true);
                     state.update('isAdmin', email === ADMIN_EMAIL);
