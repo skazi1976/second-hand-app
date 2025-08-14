@@ -1,4 +1,5 @@
 // Import and configure the Firebase SDK
+// NOTE: This file must be in the root of your project
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
@@ -21,10 +22,11 @@ messaging.onBackgroundMessage((payload) => {
     '[firebase-messaging-sw.js] Received background message ',
     payload,
   );
+  
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/images/icons/icon-192x192.png' // Make sure you have this icon
+    icon: 'images/icons/icon-192x192.png' // Make sure you have this icon in your project
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
