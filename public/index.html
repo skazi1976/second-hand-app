@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- הוראות למניעת שמירת מטמון (Cache) -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>סטייל מתגלגל</title>
+    <!-- Link to the external manifest file -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <meta name="theme-color" content="#2c3e50">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --whatsapp-color: #25D366;
+            --background-color: #f4f6f9;
+            --text-color: #34495e;
+            --header-color: #2c3e50; 
+            --card-bg-color: #ffffff;
+            --shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding-bottom: 60px; /* Footer height */
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--header-color);
+            color: white;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            flex-grow: 1;
+        }
+
+        .header-center h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        #logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        main {
+            padding: 1rem;
+        }
+
+        #controls-bar {
+            padding: 1rem;
+            background-color: #fff;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        #search-input, #category-filter {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #filter-buttons button, #view-toggle button, #install-app-btn {
+            padding: 10px 15px;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #install-app-btn {
+             background-color: var(--secondary-color);
+        }
+        #filter-buttons button.hidden {
+            display: none;
+        }
+        #view-toggle button.active {
+            background-color: var(--secondary-color);
+        }
+
+
+        footer {
+            background-color: var(--header-color);
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        #gallery, #sellers-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            padding-top: 1rem;
+        }
+        
+        #feed-view {
+            max-width: 600px;
+            margin: 1rem auto;
+        }
+
+        .item-card {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        
+        /* Image Slider */
+        .image-slider {
+            position: relative;
+            width: 100%;
+            height: 200px;
+        }
+        .slider-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .slider-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .slider-btn.prev { left: 10px; }
+        .slider-btn.next { right: 10px; }
+
+
+        .item-card-content {
+            padding: 1rem;
+            flex-grow: 1;
+        }
+
+        .item-card h3 {
+            margin-top: 0;
+        }
+        
+        .item-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .item-controls .btn {
+            width: auto;
+            padding: 8px 12px;
+            margin: 0;
+            text-decoration: none;
+            color: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .item-controls .btn:hover {
+            opacity: 0.8;
+        }
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-danger { background-color: var(--danger-color); }
+        .whatsapp-btn {
+            background-color: var(--whatsapp-color);
+        }
+        .whatsapp-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+        .buy-btn {
+            background-color: var(--secondary-color);
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        /* Feed Item Styles */
+        .feed-item {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .feed-item-header {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            justify-content: space-between;
+        }
+        .feed-item-seller-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .feed-item-seller-photo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .feed-item-seller-name {
+            font-weight: bold;
+        }
+        .feed-item-image-container {
+             position: relative;
+             width: 100%;
+             max-height: 600px;
+        }
+        .feed-item-image {
+            width: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        .feed-item-content {
+            padding: 1rem;
+        }
+        .feed-item-content h3 {
+            margin-top: 0;
+        }
+        .item-price {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin: 0.5rem 0;
+        }
+        .item-timestamp {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+        .item-category-badge {
+            display: inline-block;
+            background-color: #ecf0f1;
+            color: var(--text-color);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+        .item-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+        }
+        .like-button, .report-button {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .like-button svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--danger-color);
+            fill: none;
+        }
+        .like-button.liked svg {
+            fill: var(--danger-color);
+        }
+        .report-button svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--text-color);
+        }
+
+        /* Seller Card Styles */
+        .seller-card {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .seller-photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 1rem;
+        }
+        .seller-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        .item-count {
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+        .seller-card button {
+             width: 100%;
+             padding: 10px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 8px;
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px); } to { transform: translateY(0); } }
+
+        .close-button {
+            color: #aaa;
+            float: left; /* Adjusted for RTL */
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            left: 20px; /* Adjusted for RTL */
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Form Styles */
+        form label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        form input, form textarea, form button, form select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        
+        #image-upload-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .preview-image-container {
+            position: relative;
+        }
+        .preview-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        .remove-image-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+
+        form button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        form button:hover {
+            opacity: 0.8;
+        }
+
+        #auth-container {
+            flex: 1 0 auto;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #auth-container button {
+             margin: 0;
+             padding: 10px 15px;
+        }
+
+        #messages-btn, #notifications-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            position: relative;
+        }
+        #messages-btn svg, #notifications-btn svg {
+            width: 28px;
+            height: 28px;
+            stroke: white;
+            fill: none;
+        }
+
+        #user-info {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1 0 auto;
+        }
+        
+        #user-info span {
+            white-space: nowrap;
+        }
+
+        #add-item-btn {
+            position: fixed;
+            bottom: 80px; /* Above footer */
+            left: 20px; /* Adjusted for RTL */
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 30px;
+            line-height: 60px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: none; /* Hidden by default */
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+
+        /* Custom Alert/Confirm Modal */
+        #alert-modal-text, #confirm-modal-text {
+            margin-bottom: 20px;
+        }
+        #confirm-modal-buttons {
+            text-align: left;
+        }
+        #confirm-modal-buttons button {
+            width: auto;
+            margin-right: 10px;
+        }
+        #confirm-ok-btn {
+            background-color: var(--danger-color);
+        }
+        
+        .page-content {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s ease infinite;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Notifications Styles */
+        #notification-container {
+            position: relative;
+        }
+        #notification-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            padding: 1px 5px;
+            font-size: 10px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #notifications-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1100;
+            border: 1px solid #ddd;
+        }
+        .notification-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+        .notification-item.unread {
+            background-color: #ecf0f1;
+        }
+        .notification-item p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .notification-item .timestamp {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+
+
+        /* Messaging Styles */
+        .conversation-list-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .conversation-list-item:hover {
+            background-color: #f9f9f9;
+        }
+        .conversation-list-item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-left: 15px;
+        }
+        .conversation-details {
+            flex-grow: 1;
+        }
+        .conversation-details strong {
+            display: block;
+        }
+        #chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .message {
+            padding: 8px 12px;
+            border-radius: 18px;
+            margin-bottom: 5px;
+            max-width: 70%;
+        }
+        .message.sent {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+        }
+        .message.received {
+            background-color: #ecf0f1;
+            align-self: flex-start;
+        }
+        #chat-form {
+            display: flex;
+        }
+        #chat-input {
+            flex-grow: 1;
+            margin-top: 0;
+        }
+        #chat-form button {
+            margin-top: 0;
+            margin-right: 10px;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 600px) {
+            .header-center h1 {
+                font-size: 1.2rem;
+            }
+            #user-info span {
+                display: none; /* Hide name on mobile */
+            }
+            #auth-container button {
+                padding: 8px 10px;
+            }
+            #controls-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            main {
+                padding: 0.5rem;
+            }
+            #feed-view {
+                margin: 0.5rem 0;
+            }
+            .modal-content {
+                margin: 5% auto;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        <div id="auth-container"></div>
+        <div class="header-center">
+             <img id="logo" src="https://raw.githubusercontent.com/skazi1976/second-hand-app/main/ChatGPT%20Image%20Jul%2023%2C%202025%2C%2010_44_20%20AM%20copy.png" alt="לוגו סטייל מתגלגל">
+            <h1>סטייל מתגלגל</h1>
+        </div>
+        <div id="user-info"></div>
+    </header>
+
+    <main>
+        <div id="controls-bar">
+            <input type="search" id="search-input" placeholder="חפש פריטים...">
+            <select id="category-filter">
+                <option value="all">כל הקטגוריות</option>
+                <option value="חולצות">חולצות</option>
+                <option value="מכנסיים">מכנסיים</option>
+                <option value="שמלות">שמלות</option>
+                <option value="נעליים">נעליים</option>
+                <option value="אביזרים">אביזרים</option>
+                <option value="אחר">אחר</option>
+            </select>
+            <div id="filter-buttons">
+                <button id="my-items-btn" class="hidden">הפריטים שלי</button>
+                <button id="sellers-btn">מוכרים</button>
+                <button id="all-items-btn" class="hidden">הצג הכל</button>
+            </div>
+            <!-- View Toggle Buttons -->
+            <div id="view-toggle">
+                <button id="grid-view-btn">רשת</button>
+                <button id="feed-view-btn" class="active">פיד</button>
+            </div>
+            <button id="install-app-btn" class="hidden">התקן אפליקציה</button>
+        </div>
+        <div id="gallery" class="hidden"></div>
+        <div id="sellers-gallery" class="hidden"></div>
+        <div id="feed-view"></div>
+    </main>
+
+    <footer>
+        <a href="#" id="terms-link">תנאי שימוש</a>
+        <a href="#" id="privacy-link">מדיניות פרטיות</a>
+    </footer>
+
+    <button id="add-item-btn" aria-label="הוסף פריט חדש">+</button>
+
+    <!-- Modals -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="item-modal">&times;</span>
+            <h2 id="item-modal-title">הוסף פריט חדש</h2>
+            <form id="item-form">
+                <input type="hidden" id="item-id">
+                <label for="item-title">כותרת</label>
+                <input type="text" id="item-title" required>
+                <label for="item-description">תיאור</label>
+                <textarea id="item-description" rows="4" required></textarea>
+                <label for="item-price">מחיר</label>
+                <input type="number" id="item-price" required>
+                <label for="item-category">קטגוריה</label>
+                <select id="item-category" required>
+                    <option value="" disabled selected>בחר קטגוריה</option>
+                    <option value="חולצות">חולצות</option>
+                    <option value="מכנסיים">מכנסיים</option>
+                    <option value="שמלות">שמלות</option>
+                    <option value="נעליים">נעליים</option>
+                    <option value="אביזרים">אביזרים</option>
+                    <option value="אחר">אחר</option>
+                </select>
+                <label for="item-phone">מספר טלפון (לוואטסאפ, אופציונלי)</label>
+                <input type="tel" id="item-phone" placeholder="לדוגמה: 0501234567">
+                <div class="admin-only hidden">
+                    <label for="item-affiliate-link">קישור אפילייט</label>
+                    <input type="url" id="item-affiliate-link" placeholder="הדבק קישור כאן">
+                </div>
+                <label for="item-images">תמונות (עד 6)</label>
+                <input type="file" id="item-images" accept="image/*" multiple>
+                <div id="image-upload-preview"></div>
+                <button type="submit">שמור</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="auth-modal">&times;</span>
+            <h2>התחברות / הרשמה</h2>
+            <p>אנא התחבר כדי להוסיף ולנהל פריטים.</p>
+            <button id="login-google-btn">התחבר עם גוגל</button>
+        </div>
+    </div>
+
+    <!-- NEW: Messages and Chat Modals -->
+    <div id="messages-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="messages-modal">&times;</span>
+            <h2>תיבת דואר נכנס</h2>
+            <div id="conversations-list"></div>
+        </div>
+    </div>
+
+    <div id="chat-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="chat-modal">&times;</span>
+            <h2 id="chat-with-name">שיחה עם...</h2>
+            <div id="chat-messages"></div>
+            <form id="chat-form">
+                <input type="text" id="chat-input" placeholder="כתוב הודעה..." required>
+                <button type="submit">שלח</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="alert-modal">&times;</span>
+            <h3 id="alert-modal-title">הודעה</h3>
+            <p id="alert-modal-text"></p>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="confirm-modal">&times;</span>
+            <h3>אישור פעולה</h3>
+            <p id="confirm-modal-text"></p>
+            <div id="confirm-modal-buttons">
+                <button id="confirm-ok-btn">אישור</button>
+                <button id="confirm-cancel-btn">ביטול</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: Loading Modal -->
+    <div id="loading-modal" class="modal">
+        <div class="modal-content" style="text-align: center; max-width: 200px;">
+            <p>נא להמתין...</p>
+            <div class="spinner"></div> 
+        </div>
+    </div>
+
+    <div id="terms-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="terms-modal">&times;</span>
+            <h2>תנאי שימוש</h2>
+            <div class="page-content">
+                <p>ברוכים הבאים לאפליקציית סטייל מתגלגל. השימוש באפליקציה זו כפוף לתנאים ולהגבלות המפורטים להלן. על ידי שימוש באפליקקציה, אתה מסכים לתנאים אלה.</p>
+                <h4>1. שימוש באפליקציה</h4>
+                <p>האפליקציה מיועדת למכירה וקנייה של פריטי יד שנייה. אין להשתמש באפליקציה למטרות לא חוקיות או למכור פריטים אסורים.</p>
+                <h4>2. אחריות</h4>
+                <p>האחריות על הפריטים, איכותם, ותיאורם חלה על המוכר בלבד. הנהלת האפליקציה אינה אחראית לעסקאות שמתבצעות בין משתמשים.</p>
+                <h4>3. קניין רוחני</h4>
+                <p>כל הזכויות על האפליקציה, כולל עיצוב, קוד ותוכן, שמורות ליוצרי האפליקציה.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="privacy-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" data-modal-id="privacy-modal">&times;</span>
+            <h2>מדיניות פרטיות</h2>
+            <div class="page-content">
+                 <p>אנו מכבדים את פרטיותך ומחויבים להגן עליה. מדיניות זו מתארת את סוגי המידע שאנו אוספים וכיצד אנו משתמשים בו.</p>
+                <h4>1. איסוף מידע</h4>
+                <p>אנו אוספים מידע שאתה מספק בעת ההרשמה, כגון שם וכתובת דוא"ל. אנו אוספים גם מידע על הפריטים שאתה מפרסם.</p>
+                <h4>2. שימוש במידע</h4>
+                <p>המידע משמש לתפעול האפליקציה, ליצירת קשר בינך לבין משתמשים אחרים, ולשיפור השירות שלנו.</p>
+                <h4>3. שיתוף מידע</h4>
+                <p>אנו לא נשתף את המידע האישי שלך עם צדדים שלישיים ללא הסכמתך, למעט במקרים הנדרשים על פי חוק.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // ==================================================================
+        // шаг 1: הגדרות FIREBASE
+        // Your web app's Firebase configuration
+        // ==================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDK0yKKGvh_I2xk-w4qmWrWBQrJmbCQkuA",
+            authDomain: "second-hand-app-2a0d3.firebaseapp.com",
+            projectId: "second-hand-app-2a0d3",
+            storageBucket: "second-hand-app-2a0d3.appspot.com",
+            messagingSenderId: "747252196826",
+            appId: "1:747252196826:web:41b5ea1eadbbe0049f0ce3",
+            measurementId: "G-RQH5E5H8JD"
+        };
+        
+        // Cloudinary Configuration
+        const cloudinaryConfig = {
+            cloudName: 'dknfb4ncn',
+            apiKey: '825272128437676',
+            uploadPreset: 'styleapp_upload' // Make sure this is an UNSIGNED preset
+        };
+
+        // Import Firebase modules from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js";
+        
+        const ADMIN_EMAIL = "ohadf1976@gmail.com";
+
+        // DOM element selectors
+        const a = (selector) => document.querySelector(selector);
+        const b = (selector) => document.querySelectorAll(selector);
+
+        // Global state
+        const state = {
+            user: null,
+            items: [],
+            sellers: [], 
+            conversations: [],
+            notifications: [],
+            unreadNotifications: 0,
+            isAuthenticated: false,
+            isAdmin: false,
+            viewMode: 'feed', 
+            filter: { type: 'all', term: '' },
+            filesToUpload: [],
+            listeners: {},
+            onChange(key, callback) {
+                if (!this.listeners[key]) this.listeners[key] = [];
+                this.listeners[key].push(callback);
+            },
+            update(key, value) {
+                // console.log(`State update: ${key}`, value); // Reduced logging
+                this[key] = value;
+                if (this.listeners[key]) {
+                    this.listeners[key].forEach(cb => cb(value));
+                }
+            }
+        };
+
+        // Firebase instances
+        let app, auth, db;
+        let deferredPrompt;
+
+        // --- UTILITY FUNCTIONS ---
+        function formatTimeAgo(timestamp) {
+            if (!timestamp) return '';
+            const now = new Date();
+            const past = timestamp.toDate();
+            const seconds = Math.floor((now - past) / 1000);
+            
+            let interval = seconds / 31536000;
+            if (interval > 1) return `לפני ${Math.floor(interval)} שנים`;
+            interval = seconds / 2592000;
+            if (interval > 1) return `לפני ${Math.floor(interval)} חודשים`;
+            interval = seconds / 86400;
+            if (interval > 1) return `לפני ${Math.floor(interval)} ימים`;
+            interval = seconds / 3600;
+            if (interval > 1) return `לפני ${Math.floor(interval)} שעות`;
+            interval = seconds / 60;
+            if (interval > 1) return `לפני ${Math.floor(interval)} דקות`;
+            return 'ממש עכשיו';
+        }
+
+        // --- MODAL & UI HELPERS ---
+        const modals = {
+            open: (id) => a(`#${id}`).style.display = 'block',
+            close: (id) => a(`#${id}`).style.display = 'none',
+            setup() {
+                b('.close-button').forEach(btn => btn.onclick = () => this.close(btn.dataset.modalId));
+                window.onclick = (e) => { 
+                    if (e.target.classList.contains('modal')) {
+                        this.close(e.target.id);
+                    }
+                    const dropdown = a('#notifications-dropdown');
+                    if (dropdown && !dropdown.classList.contains('hidden') && !a('#notification-container').contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                };
+                a('#terms-link').onclick = (e) => { e.preventDefault(); this.open('terms-modal'); };
+                a('#privacy-link').onclick = (e) => { e.preventDefault(); this.open('privacy-modal'); };
+            },
+            showAlert(message, title = "הודעה") {
+                a('#alert-modal-title').textContent = title;
+                a('#alert-modal-text').textContent = message;
+                this.open('alert-modal');
+            },
+            showConfirm(message, onConfirm) {
+                a('#confirm-modal-text').textContent = message;
+                this.open('confirm-modal');
+                a('#confirm-ok-btn').onclick = () => {
+                    this.close('confirm-modal');
+                    onConfirm();
+                };
+                a('#confirm-cancel-btn').onclick = () => this.close('confirm-modal');
+            },
+            populateItemForm(item) {
+                a('#item-id').value = item.id || '';
+                a('#item-title').value = item.title || '';
+                a('#item-description').value = item.description || '';
+                a('#item-price').value = item.price || '';
+                a('#item-category').value = item.category || '';
+                a('#item-phone').value = item.phone || '';
+                a('#item-affiliate-link').value = item.affiliateLink || '';
+                a('#image-upload-preview').innerHTML = '';
+                state.filesToUpload = [];
+            },
+            clearItemForm() {
+                a('#item-form').reset();
+                a('#item-id').value = '';
+                a('#image-upload-preview').innerHTML = '';
+                state.filesToUpload = [];
+                a('#item-modal-title').textContent = 'הוסף פריט חדש';
+            }
+        };
+
+        // --- FIREBASE & AUTHENTICATION ---
+        async function initializeFirebase() {
+            try {
+                if (!firebaseConfig || firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
+                    modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
+                    return;
+                }
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                console.log("Firebase Initialized");
+                setupAuthObserver();
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                modals.showAlert("Could not initialize Firebase.", "Error");
+            }
+        }
+
+        function setupAuthObserver() {
+            onAuthStateChanged(auth, (user) => {
+                if (user && !user.isAnonymous) {
+                    const { uid, displayName, email, photoURL } = user;
+                    console.log(`%cLogged in User ID (uid): ${uid}`, 'color: blue; font-weight: bold;');
+                    state.update('user', { uid, displayName, email, photoURL });
+                    state.update('isAuthenticated', true);
+                    state.update('isAdmin', email === ADMIN_EMAIL);
+                    fetchConversations();
+                    fetchNotifications();
+                    setupPushNotifications();
+                } else {
+                    state.update('user', null);
+                    state.update('isAuthenticated', false);
+                    state.update('isAdmin', false);
+                    if (unsubscribeFromConversations) unsubscribeFromConversations();
+                    if (unsubscribeFromNotifications) unsubscribeFromNotifications();
+                    state.update('conversations', []);
+                    state.update('notifications', []);
+                    if (!auth.currentUser) {
+                        signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+                    }
+                }
+                fetchItemsFromFirestore();
+            });
+        }
+
+        async function signInWithGoogle() {
+            if (!auth) return modals.showAlert("Auth not ready.", "Error");
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+                modals.close('auth-modal');
+            } catch (error) {
+                console.error("Google Sign-In Error:", error);
+                modals.showAlert("Google Sign-In failed.", "Error");
+            }
+        }
+
+        function signOut() {
+            if (auth) firebaseSignOut(auth);
+        }
+
+        // --- DATA PROCESSING & FIRESTORE ---
+        function processSellers(items) {
+            const sellers = items.reduce((acc, item) => {
+                if (item.ownerId && !acc[item.ownerId]) {
+                    acc[item.ownerId] = {
+                        id: item.ownerId,
+                        name: item.ownerName,
+                        photo: item.ownerPhoto,
+                        itemCount: 0
+                    };
+                }
+                if(item.ownerId) {
+                    acc[item.ownerId].itemCount++;
+                }
+                return acc;
+            }, {});
+            state.update('sellers', Object.values(sellers));
+        }
+
+        let unsubscribeFromItems;
+        function fetchItemsFromFirestore() {
+            if (!db) return;
+            if (unsubscribeFromItems) unsubscribeFromItems();
+            
+            const itemsCollection = collection(db, "items");
+            const q = query(itemsCollection, orderBy("createdAt", "desc"));
+            
+            unsubscribeFromItems = onSnapshot(q, (snapshot) => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                state.update('items', items);
+            }, (err) => {
+                console.error("Firestore Error:", err);
+                modals.showAlert("Error fetching items.", "Error");
+            });
+        }
+
+        async function uploadImagesToCloudinary(files) {
+            const uploadPromises = files.map(file => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+                
+                return fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error.message); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.secure_url) {
+                        return data.secure_url;
+                    } else {
+                        throw new Error('Cloudinary upload failed with unexpected data structure');
+                    }
+                });
+            });
+            return Promise.all(uploadPromises);
+        }
+
+        async function saveItem(itemData, files) {
+            if (!db || !state.isAuthenticated || !state.user) {
+                modals.showAlert("You must be logged in to save items.", "Error");
+                return;
+            }
+            
+            modals.open('loading-modal'); 
+            
+            try {
+                const imageUrls = files.length > 0 ? await uploadImagesToCloudinary(files) : [];
+
+                const collectionRef = collection(db, "items");
+                const { id, ...data } = itemData;
+                const itemToSave = {
+                    ...data,
+                    ownerId: state.user.uid,
+                    ownerName: state.user.displayName,
+                    ownerPhoto: state.user.photoURL,
+                };
+                
+                if (imageUrls.length > 0) {
+                    itemToSave.images = imageUrls;
+                }
+
+                if (id) {
+                    await updateDoc(doc(db, "items", id), itemToSave);
+                } else {
+                    if (!itemToSave.images || itemToSave.images.length === 0) {
+                        modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
+                        modals.close('loading-modal');
+                        return; 
+                    }
+                    itemToSave.createdAt = serverTimestamp();
+                    itemToSave.likes = [];
+                    await addDoc(collectionRef, itemToSave);
+                }
+                
+                modals.close('item-modal');
+
+            } catch (error) {
+                console.error("Save Item Error:", error);
+                modals.showAlert(`שגיאה בהעלאת תמונות: ${error.message}`, "שגיאה");
+            } finally {
+                modals.close('loading-modal');
+            }
+        }
+
+        async function deleteItem(itemId) {
+            if (!db || !state.isAuthenticated) {
+                return modals.showAlert("You must be logged in.", "Error");
+            }
+            modals.showConfirm("האם אתה בטוח שברצונך למחוק פריט זה?", async () => {
+                try {
+                    await deleteDoc(doc(db, "items", itemId));
+                } catch (error) {
+                    console.error("Delete Item Error:", error);
+                    modals.showAlert("Failed to delete item.", "Error");
+                }
+            });
+        }
+        
+        async function toggleLike(itemId) {
+            if (!db || !state.isAuthenticated) return modals.open('auth-modal');
+            
+            const itemRef = doc(db, "items", itemId);
+            const item = state.items.find(i => i.id === itemId);
+            const userLiked = item.likes && item.likes.includes(state.user.uid);
+
+            try {
+                await updateDoc(itemRef, {
+                    likes: userLiked ? arrayRemove(state.user.uid) : arrayUnion(state.user.uid)
+                });
+                if (!userLiked && item.ownerId !== state.user.uid) {
+                    createNotification(
+                        item.ownerId,
+                        `${state.user.displayName} אהב/ה את הפריט שלך: "${item.title}"`
+                    );
+                }
+            } catch (error) {
+                console.error("Error toggling like:", error);
+                modals.showAlert("לא ניתן היה לעדכן את הלייק.");
+            }
+        }
+
+        async function reportItem(item) {
+            if (!db || !state.user) return modals.open('auth-modal');
+            
+            modals.showConfirm("האם אתה בטוח שברצונך לדווח על פריט זה?", async () => {
+                try {
+                    await addDoc(collection(db, "reports"), {
+                        itemId: item.id,
+                        itemTitle: item.title,
+                        reportedBy: state.user.uid,
+                        reportedAt: serverTimestamp()
+                    });
+                    modals.showAlert("הדיווח שלך נשלח. תודה!");
+                } catch (error) {
+                    console.error("Error reporting item:", error);
+                    modals.showAlert("שליחת הדיווח נכשלה.");
+                }
+            });
+        }
+
+        // --- NOTIFICATIONS ---
+        async function createNotification(targetUserId, text, data = {}) {
+            if (!db || !targetUserId || targetUserId === state.user.uid) return;
+            try {
+                const notificationsCol = collection(db, `users/${targetUserId}/notifications`);
+                await addDoc(notificationsCol, {
+                    text,
+                    createdAt: serverTimestamp(),
+                    read: false,
+                    ...data
+                });
+            } catch (error) {
+                console.error("Error creating notification:", error);
+            }
+        }
+
+        let unsubscribeFromNotifications;
+        function fetchNotifications() {
+            if (!db || !state.user) return;
+            if (unsubscribeFromNotifications) unsubscribeFromNotifications();
+
+            const q = query(collection(db, `users/${state.user.uid}/notifications`), orderBy("createdAt", "desc"));
+            unsubscribeFromNotifications = onSnapshot(q, (snapshot) => {
+                const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const unreadCount = notifications.filter(n => !n.read).length;
+                state.update('notifications', notifications);
+                state.update('unreadNotifications', unreadCount);
+            }, (error) => {
+                console.error("Error fetching notifications:", error);
+            });
+        }
+
+        async function markNotificationsAsRead() {
+            if (!db || !state.user || state.unreadNotifications === 0) return;
+            const unread = state.notifications.filter(n => !n.read);
+            const batch = writeBatch(db);
+            unread.forEach(n => {
+                const notifRef = doc(db, `users/${state.user.uid}/notifications`, n.id);
+                batch.update(notifRef, { read: true });
+            });
+            try {
+                await batch.commit();
+            } catch (error) {
+                console.error("Error marking notifications as read:", error);
+            }
+        }
+
+        // --- MESSAGING ---
+        let unsubscribeFromConversations;
+        function fetchConversations() {
+            if (!db || !state.user) return;
+            if (unsubscribeFromConversations) unsubscribeFromConversations();
+
+            const q = query(collection(db, "conversations"), where(`participants.${state.user.uid}`, "==", true));
+            unsubscribeFromConversations = onSnapshot(q, (snapshot) => {
+                const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                state.update('conversations', conversations);
+            });
+        }
+
+        let unsubscribeFromMessages;
+        function openChat(conversation) {
+            if (unsubscribeFromMessages) unsubscribeFromMessages();
+
+            const otherParticipantId = Object.keys(conversation.participants).find(id => id !== state.user.uid);
+            const otherParticipant = conversation.participantDetails[otherParticipantId];
+            
+            a('#chat-with-name').textContent = `שיחה עם ${otherParticipant.name}`;
+            a('#chat-modal').dataset.conversationId = conversation.id;
+            modals.open('chat-modal');
+
+            const messagesContainer = a('#chat-messages');
+            messagesContainer.innerHTML = '';
+
+            const q = query(collection(db, `conversations/${conversation.id}/messages`), orderBy("timestamp", "asc"));
+            unsubscribeFromMessages = onSnapshot(q, (snapshot) => {
+                messagesContainer.innerHTML = '';
+                snapshot.docs.forEach(doc => {
+                    const message = doc.data();
+                    const messageEl = document.createElement('div');
+                    messageEl.className = `message ${message.senderId === state.user.uid ? 'sent' : 'received'}`;
+                    messageEl.textContent = message.text;
+                    messagesContainer.prepend(messageEl);
+                });
+            });
+        }
+
+        async function sendMessage(conversationId, text) {
+            if (!db || !state.user) return;
+            const messagesCol = collection(db, `conversations/${conversationId}/messages`);
+            await addDoc(messagesCol, {
+                text,
+                senderId: state.user.uid,
+                timestamp: serverTimestamp()
+            });
+            const convo = state.conversations.find(c => c.id === conversationId);
+            if (convo) {
+                const otherParticipantId = Object.keys(convo.participants).find(id => id !== state.user.uid);
+                createNotification(
+                    otherParticipantId,
+                    `הודעה חדשה מ-${state.user.displayName} בנוגע ל: ${convo.itemTitle}`,
+                    { 
+                        type: 'message',
+                        conversationId: conversationId,
+                        participants: convo.participants,
+                        participantDetails: convo.participantDetails
+                    }
+                );
+            }
+        }
+
+        async function startOrGetConversation(item) {
+            if (!db || !state.user) return modals.open('auth-modal');
+            
+            try {
+                const conversationId = [state.user.uid, item.ownerId].sort().join('_') + `_${item.id}`;
+                const conversationRef = doc(db, "conversations", conversationId);
+                
+                const participants = { [state.user.uid]: true, [item.ownerId]: true };
+                const participantDetails = {
+                    [state.user.uid]: { name: state.user.displayName, photo: state.user.photoURL },
+                    [item.ownerId]: { name: item.ownerName, photo: item.ownerPhoto }
+                };
+
+                await setDoc(conversationRef, {
+                    participants,
+                    participantDetails,
+                    itemId: item.id,
+                    itemTitle: item.title,
+                    itemImage: item.images ? item.images[0] : ''
+                }, { merge: true });
+                
+                openChat({ id: conversationId, participants, participantDetails });
+            } catch (error) {
+                console.error("Error starting conversation:", error);
+                modals.showAlert("לא ניתן היה להתחיל שיחה. נסה שוב מאוחר יותר.", "שגיאה");
+            }
+        }
+
+        // --- PUSH NOTIFICATIONS SETUP ---
+        async function setupPushNotifications() {
+            if (!state.user || !('serviceWorker' in navigator)) {
+                console.log("Push notifications not supported or user not logged in.");
+                return;
+            }
+
+            const messaging = getMessaging(app);
+
+            try {
+                const permission = await Notification.requestPermission();
+                console.log('Notification permission status:', permission);
+
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+
+                    const currentToken = await getToken(messaging, { vapidKey: 'BP414nWpehXwmvB8T-D0eXGDslYA8yoMeqUc9Blql9nqRJYN-4oLybXtRNEAsfWg8jHM03iOB9f8tP0B67jB-BQ' });
+
+                    if (currentToken) {
+                        const userRef = doc(db, `users/${state.user.uid}`);
+                        await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
+                        console.log('%cFCM Token saved:', 'color: green; font-weight: bold;', currentToken);
+                    } else {
+                        console.log('%cNo registration token available. Request permission to generate one.', 'color: orange;');
+                    }
+                } else {
+                    console.log('%cUnable to get permission to notify.', 'color: orange;');
+                }
+            } catch (error) {
+                console.error('%cAn error occurred while setting up push notifications.', 'color: red; font-weight: bold;', error);
+            }
+
+            onMessage(messaging, (payload) => {
+                console.log('Message received in foreground. ', payload);
+                // Optionally show an in-app notification banner
+            });
+        }
+
+
+        // --- UI COMPONENTS & RENDERING ---
+        const components = {
+            createImageSlider(images, containerClass) {
+                const slider = document.createElement('div');
+                slider.className = containerClass;
+                if (!images || images.length === 0) {
+                    slider.innerHTML = `<img src="https://placehold.co/600x400/ecf0f1/34495e?text=No+Image" class="slider-image">`;
+                    return slider;
+                }
+
+                let currentIndex = 0;
+                slider.innerHTML = `<img src="${images[currentIndex]}" class="slider-image">`;
+
+                if (images.length > 1) {
+                    const prevBtn = document.createElement('button');
+                    prevBtn.className = 'slider-btn prev';
+                    prevBtn.innerHTML = '&#10094;';
+                    prevBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        currentIndex = (currentIndex > 0) ? currentIndex - 1 : images.length - 1;
+                        slider.querySelector('.slider-image').src = images[currentIndex];
+                    };
+
+                    const nextBtn = document.createElement('button');
+                    nextBtn.className = 'slider-btn next';
+                    nextBtn.innerHTML = '&#10095;';
+                    nextBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        currentIndex = (currentIndex < images.length - 1) ? currentIndex + 1 : 0;
+                        slider.querySelector('.slider-image').src = images[currentIndex];
+                    };
+                    slider.appendChild(prevBtn);
+                    slider.appendChild(nextBtn);
+                }
+                return slider;
+            },
+            itemCard(item) {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.dataset.id = item.id;
+                const likes = item.likes || [];
+                const userLiked = state.isAuthenticated && likes.includes(state.user.uid);
+
+                const slider = this.createImageSlider(item.images, 'image-slider');
+                card.appendChild(slider);
+
+                const content = document.createElement('div');
+                content.className = 'item-card-content';
+                content.innerHTML = `
+                    ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                    <div class="item-price">₪${item.price}</div>
+                    <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
+                    <div class="item-actions">
+                        <button class="like-button ${userLiked ? 'liked' : ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <span>${likes.length}</span>
+                        </button>
+                        <div class="item-controls"></div>
+                    </div>
+                `;
+                card.appendChild(content);
+
+                const controlsContainer = card.querySelector('.item-controls');
+                if (item.affiliateLink) {
+                    const buyBtn = document.createElement('a');
+                    buyBtn.href = item.affiliateLink;
+                    buyBtn.target = "_blank";
+                    buyBtn.className = "buy-btn btn";
+                    buyBtn.textContent = "לרכישה";
+                    controlsContainer.appendChild(buyBtn);
+                } else if (state.isAuthenticated && state.user.uid === item.ownerId) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "btn btn-primary";
+                    editBtn.textContent = 'ערוך';
+                    editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "btn btn-danger";
+                    deleteBtn.textContent = 'מחק';
+                    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
+                    controlsContainer.appendChild(editBtn);
+                    controlsContainer.appendChild(deleteBtn);
+                } else if (state.isAuthenticated) {
+                    if (item.phone) {
+                        const whatsappBtn = document.createElement('a');
+                        whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
+                        whatsappBtn.target = "_blank";
+                        whatsappBtn.className = "whatsapp-btn btn";
+                        whatsappBtn.title = "שלח הודעת וואטסאפ";
+                        whatsappBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="white"><path d="M16.75,13.96C17,14.26 17.25,14.81 17.3,15.06C17.35,15.31 17.3,15.5 17.3,15.55C17.3,15.85 17.15,16.24 16.88,16.46C16.63,16.66 16.24,16.84 15.69,16.96C15.14,17.11 14.49,17.21 12.27,16.29C9.48,15.11 7.5,12.82 7.29,12.52C7.08,12.22 6,10.76 6,9.22C6,7.68 6.95,6.73 7.24,6.43C7.54,6.14 7.92,6.04 8.21,6.04C8.36,6.04 8.5,6.04 8.63,6.04C8.88,6.04 9,6.16 9.16,6.5C9.33,6.83 9.73,7.82 9.83,7.97C9.93,8.12 10,8.22 9.93,8.37C9.85,8.52 9.73,8.64 9.61,8.76C9.48,8.88 9.36,9 9.24,9.12C9.12,9.24 9,9.36 9.12,9.58C9.25,9.81 9.73,10.59 10.45,11.23C11.33,12.03 12.13,12.4 12.38,12.58C12.63,12.75 12.78,12.73 12.94,12.58C13.1,12.43 13.28,12.11 13.43,11.91C13.59,11.71 13.89,11.64 14.19,11.76C14.49,11.89 15.93,12.62 16.23,12.77C16.53,12.92 16.68,13 16.73,13.12C16.78,13.24 16.75,13.66 16.75,13.96M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22C13.66,22 15.25,21.54 16.63,20.72L22,22L20.72,16.63C21.54,15.25 22,13.66 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.54 19.5,15 18.65,16.24L19.53,19.53L16.24,18.65C15,19.5 13.54,20 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"></path></svg>`;
+                        controlsContainer.appendChild(whatsappBtn);
+                    }
+                    
+                    const contactBtn = document.createElement('button');
+                    contactBtn.className = "btn btn-primary";
+                    contactBtn.textContent = 'הודעה';
+                    contactBtn.title = "שלח הודעה בתוך האפליקציה";
+                    contactBtn.onclick = (e) => { 
+                        e.stopPropagation(); 
+                        startOrGetConversation(item); 
+                    };
+                    controlsContainer.appendChild(contactBtn);
+                }
+                
+                card.querySelector('.like-button').onclick = (e) => {
+                    e.stopPropagation();
+                    toggleLike(item.id);
+                };
+
+                return card;
+            },
+            feedItemCard(item) {
+                const card = document.createElement('div');
+                card.className = 'feed-item';
+                card.dataset.id = item.id;
+                const likes = item.likes || [];
+                const userLiked = state.isAuthenticated && likes.includes(state.user.uid);
+
+                card.innerHTML = `
+                    <div class="feed-item-header">
+                        <div class="feed-item-seller-info">
+                            <img src="${item.ownerPhoto || 'https://placehold.co/40x40/ecf0f1/34495e?text=?'}" alt="${item.ownerName}" class="feed-item-seller-photo">
+                            <span class="feed-item-seller-name">${item.ownerName || 'אלמוני'}</span>
+                        </div>
+                    </div>
+                `;
+                
+                const slider = this.createImageSlider(item.images, 'feed-item-image-container');
+                card.appendChild(slider);
+                
+                const content = document.createElement('div');
+                content.className = 'feed-item-content';
+                content.innerHTML = `
+                    ${item.category ? `<div class="item-category-badge">${item.category}</div>` : ''}
+                    <h3>${item.title}</h3>
+                    <p>${item.description}</p>
+                    <div class="item-price">₪${item.price}</div>
+                    <div class="item-timestamp">${formatTimeAgo(item.createdAt)}</div>
+                    <div class="item-actions">
+                         <button class="like-button ${userLiked ? 'liked' : ''}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <span>${likes.length}</span>
+                        </button>
+                        <div class="item-controls"></div>
+                    </div>
+                `;
+                card.appendChild(content);
+
+                const header = card.querySelector('.feed-item-header');
+                const controlsContainer = card.querySelector('.item-controls');
+
+                if (state.isAuthenticated && state.user.uid !== item.ownerId) {
+                    const reportBtn = document.createElement('button');
+                    reportBtn.className = 'report-button';
+                    reportBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+                    reportBtn.onclick = (e) => { e.stopPropagation(); reportItem(item); };
+                    header.appendChild(reportBtn);
+                }
+
+                 if (item.affiliateLink) {
+                    const buyBtn = document.createElement('a');
+                    buyBtn.href = item.affiliateLink;
+                    buyBtn.target = "_blank";
+                    buyBtn.className = "buy-btn btn";
+                    buyBtn.textContent = "לרכישה";
+                    controlsContainer.appendChild(buyBtn);
+                } else if (state.isAuthenticated && state.user.uid === item.ownerId) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "btn btn-primary";
+                    editBtn.textContent = 'ערוך';
+                    editBtn.onclick = (e) => { e.stopPropagation(); events.onEditItem(item.id); };
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "btn btn-danger";
+                    deleteBtn.textContent = 'מחק';
+                    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteItem(item.id); };
+                    controlsContainer.appendChild(editBtn);
+                    controlsContainer.appendChild(deleteBtn);
+                } else if (state.isAuthenticated) {
+                    if (item.phone) {
+                        const whatsappBtn = document.createElement('a');
+                        whatsappBtn.href = `https://wa.me/972${item.phone.substring(1)}?text=${encodeURIComponent(`היי, אני מתעניין בפריט "${item.title}" שפרסמת בסטייל מתגלגל`)}`;
+                        whatsappBtn.target = "_blank";
+                        whatsappBtn.className = "whatsapp-btn btn";
+                        whatsappBtn.title = "שלח הודעת וואטסאפ";
+                        whatsappBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="white"><path d="M16.75,13.96C17,14.26 17.25,14.81 17.3,15.06C17.35,15.31 17.3,15.5 17.3,15.55C17.3,15.85 17.15,16.24 16.88,16.46C16.63,16.66 16.24,16.84 15.69,16.96C15.14,17.11 14.49,17.21 12.27,16.29C9.48,15.11 7.5,12.82 7.29,12.52C7.08,12.22 6,10.76 6,9.22C6,7.68 6.95,6.73 7.24,6.43C7.54,6.14 7.92,6.04 8.21,6.04C8.36,6.04 8.5,6.04 8.63,6.04C8.88,6.04 9,6.16 9.16,6.5C9.33,6.83 9.73,7.82 9.83,7.97C9.93,8.12 10,8.22 9.93,8.37C9.85,8.52 9.73,8.64 9.61,8.76C9.48,8.88 9.36,9 9.24,9.12C9.12,9.24 9,9.36 9.12,9.58C9.25,9.81 9.73,10.59 10.45,11.23C11.33,12.03 12.13,12.4 12.38,12.58C12.63,12.75 12.78,12.73 12.94,12.58C13.1,12.43 13.28,12.11 13.43,11.91C13.59,11.71 13.89,11.64 14.19,11.76C14.49,11.89 15.93,12.62 16.23,12.77C16.53,12.92 16.68,13 16.73,13.12C16.78,13.24 16.75,13.66 16.75,13.96M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22C13.66,22 15.25,21.54 16.63,20.72L22,22L20.72,16.63C21.54,15.25 22,13.66 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.54 19.5,15 18.65,16.24L19.53,19.53L16.24,18.65C15,19.5 13.54,20 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4Z"></path></svg>`;
+                        controlsContainer.appendChild(whatsappBtn);
+                    }
+                    
+                    const contactBtn = document.createElement('button');
+                    contactBtn.className = "btn btn-primary";
+                    contactBtn.textContent = 'הודעה';
+                    contactBtn.title = "שלח הודעה בתוך האפליקציה";
+                    contactBtn.onclick = (e) => { 
+                        e.stopPropagation(); 
+                        startOrGetConversation(item); 
+                    };
+                    controlsContainer.appendChild(contactBtn);
+                }
+                
+                card.querySelector('.like-button').onclick = (e) => {
+                    e.stopPropagation();
+                    toggleLike(item.id);
+                };
+
+                return card;
+            },
+            sellerCard(seller) {
+                const card = document.createElement('div');
+                card.className = 'seller-card';
+                card.innerHTML = `
+                    <img src="${seller.photo || 'https://placehold.co/80x80/ecf0f1/34495e?text=?'}" alt="${seller.name}" class="seller-photo">
+                    <div class="seller-name">${seller.name}</div>
+                    <div class="item-count">${seller.itemCount} פריטים</div>
+                    <button class="view-seller-items-btn" data-seller-id="${seller.id}">הצג פריטים</button>
+                `;
+                card.querySelector('.view-seller-items-btn').addEventListener('click', (e) => {
+                    const sellerId = e.target.dataset.sellerId;
+                    state.update('filter', { type: 'by_seller', term: sellerId });
+                });
+                return card;
+            },
+            conversationListItem(convo) {
+                const otherParticipantId = Object.keys(convo.participants).find(id => id !== state.user.uid);
+                const otherParticipant = convo.participantDetails[otherParticipantId];
+
+                const item = document.createElement('div');
+                item.className = 'conversation-list-item';
+                item.innerHTML = `
+                    <img src="${otherParticipant.photo || 'https://placehold.co/50x50/ecf0f1/34495e?text=?'}" alt="${otherParticipant.name}">
+                    <div class="conversation-details">
+                        <strong>${otherParticipant.name}</strong>
+                        <span>לגבי: ${convo.itemTitle}</span>
+                    </div>
+                `;
+                item.onclick = () => openChat(convo);
+                return item;
+            },
+            notificationItem(notification) {
+                const item = document.createElement('div');
+                item.className = `notification-item ${notification.read ? '' : 'unread'}`;
+                
+                item.innerHTML = `
+                    <p>${notification.text}</p>
+                    <div class="timestamp">${formatTimeAgo(notification.createdAt)}</div>
+                `;
+
+                item.onclick = () => {
+                    a('#notifications-dropdown').classList.add('hidden');
+                    
+                    if (notification.type === 'message' && notification.conversationId) {
+                        const conversationFromState = state.conversations.find(c => c.id === notification.conversationId);
+                        
+                        if (conversationFromState) {
+                            openChat(conversationFromState);
+                        } else if (notification.participants && notification.participantDetails) {
+                            openChat({
+                                id: notification.conversationId,
+                                participants: notification.participants,
+                                participantDetails: notification.participantDetails
+                            });
+                        } else {
+                            modals.showAlert("השיחה המקורית לא נמצאה.");
+                        }
+                    }
+                };
+                return item;
+            },
+            authUI() {
+                const authContainer = a('#auth-container');
+                const userInfoContainer = a('#user-info');
+                authContainer.innerHTML = ''; // Clear previous
+                if (state.isAuthenticated) {
+                    authContainer.innerHTML = `
+                        <button id="messages-btn" title="הודעות">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        </button>
+                        <div id="notification-container">
+                            <button id="notifications-btn" title="התראות">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                <span id="notification-badge" class="hidden"></span>
+                            </button>
+                            <div id="notifications-dropdown" class="hidden"></div>
+                        </div>
+                        <button id="logout-btn">התנתק</button>
+                    `;
+
+                    userInfoContainer.innerHTML = `
+                        <span>שלום, ${state.user.displayName}</span>
+                        <img src="${state.user.photoURL}" alt="תמונת פרופיל" style="width: 40px; border-radius: 50%; vertical-align: middle; margin-right: 10px;">`;
+                } else {
+                    const loginBtn = document.createElement('button');
+                    loginBtn.id = 'login-btn';
+                    loginBtn.textContent = 'התחבר';
+                    authContainer.appendChild(loginBtn);
+                    userInfoContainer.innerHTML = '';
+                }
+                events.attachAuthListeners();
+            }
+        };
+
+        const views = {
+            getFilteredItems() {
+                const { type, term } = state.filter;
+                let items = state.items;
+
+                if (type === 'search') {
+                    items = items.filter(item => 
+                        item.title.toLowerCase().includes(term.toLowerCase())
+                    );
+                } else if (type === 'my_items' && state.user) {
+                    items = items.filter(item => item.ownerId === state.user.uid);
+                } else if (type === 'by_seller') {
+                    items = items.filter(item => item.ownerId === term);
+                } else if (type === 'by_category' && term !== 'all') {
+                    items = items.filter(item => item.category === term);
+                }
+                return items;
+            },
+            renderItemsGallery() {
+                const gallery = a('#gallery');
+                gallery.innerHTML = '';
+                const itemsToShow = this.getFilteredItems();
+
+                if (itemsToShow.length === 0) {
+                    gallery.innerHTML = '<p>לא נמצאו פריטים.</p>';
+                } else {
+                    itemsToShow.forEach(item => gallery.appendChild(components.itemCard(item)));
+                }
+            },
+            renderFeedView() {
+                const feed = a('#feed-view');
+                feed.innerHTML = '';
+                const itemsToShow = this.getFilteredItems();
+
+                if (itemsToShow.length === 0) {
+                    feed.innerHTML = '<p>לא נמצאו פריטים.</p>';
+                } else {
+                    itemsToShow.forEach(item => feed.appendChild(components.feedItemCard(item)));
+                }
+            },
+            renderSellersGallery() {
+                const gallery = a('#sellers-gallery');
+                gallery.innerHTML = '';
+                if (state.sellers.length === 0) {
+                    gallery.innerHTML = '<p>אין מוכרים להצגה.</p>';
+                } else {
+                    state.sellers.forEach(seller => gallery.appendChild(components.sellerCard(seller)));
+                }
+            },
+            renderConversationsList() {
+                const list = a('#conversations-list');
+                list.innerHTML = '';
+                if (state.conversations.length === 0) {
+                    list.innerHTML = '<p>אין לך שיחות פעילות.</p>';
+                } else {
+                    state.conversations.forEach(convo => list.appendChild(components.conversationListItem(convo)));
+                }
+            },
+            renderNotifications() {
+                const dropdown = a('#notifications-dropdown');
+                if (!dropdown) return;
+                dropdown.innerHTML = '';
+                if (state.notifications.length === 0) {
+                    dropdown.innerHTML = '<div class="notification-item"><p>אין התראות חדשות.</p></div>';
+                } else {
+                    state.notifications.forEach(n => dropdown.appendChild(components.notificationItem(n)));
+                }
+            },
+            updateNotificationBadge() {
+                const badge = a('#notification-badge');
+                if (!badge) return;
+                if (state.unreadNotifications > 0) {
+                    badge.textContent = state.unreadNotifications;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            },
+            renderCurrentView() {
+                const { type } = state.filter;
+                const isSellersView = type === 'all_sellers';
+                
+                a('#sellers-gallery').classList.toggle('hidden', !isSellersView);
+                a('#search-input').classList.toggle('hidden', isSellersView);
+                a('#view-toggle').classList.toggle('hidden', isSellersView);
+                a('#category-filter').classList.toggle('hidden', isSellersView);
+
+
+                if (isSellersView) {
+                    a('#gallery').classList.add('hidden');
+                    a('#feed-view').classList.add('hidden');
+                    this.renderSellersGallery();
+                } else {
+                    const isGridView = state.viewMode === 'grid';
+                    a('#gallery').classList.toggle('hidden', !isGridView);
+                    a('#feed-view').classList.toggle('hidden', isGridView);
+                    if (isGridView) {
+                        this.renderItemsGallery();
+                    } else {
+                        this.renderFeedView();
+                    }
+                }
+            },
+            renderAuthUI() {
+                components.authUI();
+            },
+            updateFilterButtons() {
+                const myItemsBtn = a('#my-items-btn');
+                const allItemsBtn = a('#all-items-btn');
+                const sellersBtn = a('#sellers-btn');
+                
+                myItemsBtn.classList.toggle('hidden', !state.isAuthenticated);
+                
+                const showAllButton = state.filter.type !== 'all' && state.filter.type !== 'all_sellers';
+                allItemsBtn.classList.toggle('hidden', !showAllButton);
+                
+                sellersBtn.classList.toggle('hidden', showAllButton || state.filter.type === 'all_sellers');
+            },
+            updateViewToggleButtons() {
+                a('#grid-view-btn').classList.toggle('active', state.viewMode === 'grid');
+                a('#feed-view-btn').classList.toggle('active', state.viewMode === 'feed');
+            },
+            renderImageUploadPreview() {
+                const previewContainer = a('#image-upload-preview');
+                previewContainer.innerHTML = '';
+                state.filesToUpload.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-image-container';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" class="preview-image">
+                            <button type="button" class="remove-image-btn" data-index="${index}">&times;</button>
+                        `;
+                        div.querySelector('.remove-image-btn').onclick = () => {
+                            state.filesToUpload.splice(index, 1);
+                            this.renderImageUploadPreview();
+                        };
+                        previewContainer.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        };
+
+        // --- EVENT HANDLING ---
+        const events = {
+            setup() {
+                a('#add-item-btn').addEventListener('click', this.onAddItem);
+                a('#item-form').addEventListener('submit', this.onSaveItem);
+                
+                a('#item-images').addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length + state.filesToUpload.length > 6) {
+                        modals.showAlert("ניתן להעלות עד 6 תמונות בלבד.");
+                        e.target.value = ""; // Clear the selection
+                        return;
+                    }
+                    state.filesToUpload.push(...files);
+                    views.renderImageUploadPreview();
+                });
+
+                a('#search-input').addEventListener('input', (e) => {
+                    state.update('filter', { type: 'search', term: e.target.value });
+                });
+
+                a('#category-filter').addEventListener('change', (e) => {
+                    state.update('filter', { type: 'by_category', term: e.target.value });
+                });
+
+                a('#my-items-btn').addEventListener('click', () => {
+                    state.update('filter', { type: 'my_items', term: '' });
+                });
+                
+                a('#sellers-btn').addEventListener('click', () => {
+                    state.update('filter', { type: 'all_sellers', term: '' });
+                });
+
+                a('#all-items-btn').addEventListener('click', () => {
+                    state.update('filter', { type: 'all', term: '' });
+                });
+
+                a('#grid-view-btn').addEventListener('click', () => state.update('viewMode', 'grid'));
+                a('#feed-view-btn').addEventListener('click', () => state.update('viewMode', 'feed'));
+                
+                a('#chat-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const conversationId = a('#chat-modal').dataset.conversationId;
+                    const text = a('#chat-input').value;
+                    if (conversationId && text) {
+                        sendMessage(conversationId, text);
+                        a('#chat-input').value = '';
+                    }
+                });
+                
+                const installBtn = a('#install-app-btn');
+                if (installBtn) {
+                    installBtn.addEventListener('click', async () => {
+                        if (deferredPrompt) {
+                            deferredPrompt.prompt();
+                            const { outcome } = await deferredPrompt.userChoice;
+                            console.log(`User response to the install prompt: ${outcome}`);
+                            deferredPrompt = null;
+                            installBtn.classList.add('hidden');
+                        }
+                    });
+                }
+            },
+            attachAuthListeners() {
+                const loginBtn = a('#login-btn');
+                if (loginBtn) loginBtn.onclick = () => modals.open('auth-modal');
+                
+                const loginGoogleBtn = a('#login-google-btn');
+                if(loginGoogleBtn) loginGoogleBtn.onclick = () => signInWithGoogle();
+
+                if (state.isAuthenticated) {
+                    a('#logout-btn').onclick = () => signOut();
+                    a('#messages-btn').onclick = () => modals.open('messages-modal');
+                    a('#notifications-btn').onclick = () => {
+                        const dropdown = a('#notifications-dropdown');
+                        dropdown.classList.toggle('hidden');
+                        if (!dropdown.classList.contains('hidden')) {
+                            markNotificationsAsRead();
+                        }
+                    };
+                }
+            },
+            onAddItem() {
+                if (!state.isAuthenticated) return modals.open('auth-modal');
+                modals.clearItemForm();
+                b('.admin-only').forEach(el => el.classList.toggle('hidden', !state.isAdmin));
+                modals.open('item-modal');
+            },
+            onEditItem(itemId) {
+                const item = state.items.find(i => i.id === itemId);
+                if (item) {
+                    a('#item-modal-title').textContent = 'ערוך פריט';
+                    modals.populateItemForm(item);
+                    b('.admin-only').forEach(el => el.classList.toggle('hidden', !state.isAdmin));
+                    modals.open('item-modal');
+                }
+            },
+            onSaveItem(e) {
+                e.preventDefault();
+                const itemData = {
+                    id: a('#item-id').value,
+                    title: a('#item-title').value,
+                    description: a('#item-description').value,
+                    price: parseFloat(a('#item-price').value),
+                    category: a('#item-category').value,
+                    phone: a('#item-phone').value,
+                    affiliateLink: a('#item-affiliate-link').value
+                };
+                saveItem(itemData, state.filesToUpload);
+            }
+        };
+
+        // --- DIAGNOSTIC FUNCTION ---
+        async function verifyServiceWorkerExists() {
+            try {
+                const response = await fetch('/firebase-messaging-sw.js');
+                if (response.ok) {
+                    console.log('%c✅ SUCCESS: firebase-messaging-sw.js file found!', 'color: green; font-weight: bold;');
+                } else {
+                    console.error(`%c❌ ERROR: firebase-messaging-sw.js file not found. Status: ${response.status}`, 'color: red; font-weight: bold;');
+                    modals.showAlert('קובץ חיוני להתראות (Service Worker) חסר. ודא שהקובץ firebase-messaging-sw.js נמצא בתיקייה הראשית של הפרויקט שלך.', 'שגיאת הגדרה קריטית');
+                }
+            } catch (error) {
+                console.error('%c❌ ERROR: Could not fetch firebase-messaging-sw.js.', 'color: red; font-weight: bold;', error);
+            }
+        }
+
+        // --- APP INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("App starting...");
+            verifyServiceWorkerExists();
+            initializeFirebase();
+            modals.setup();
+            events.setup();
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                const installBtn = a('#install-app-btn');
+                if (installBtn) {
+                    installBtn.classList.remove('hidden');
+                }
+            });
+
+            window.addEventListener('appinstalled', () => {
+                deferredPrompt = null;
+                const installBtn = a('#install-app-btn');
+                if (installBtn) {
+                    installBtn.classList.add('hidden');
+                }
+                console.log('PWA was installed');
+            });
+
+            state.onChange('isAuthenticated', (isAuth) => {
+                views.renderAuthUI();
+                views.updateFilterButtons();
+                a('#add-item-btn').style.display = isAuth ? 'block' : 'none';
+            });
+
+            state.onChange('items', () => {
+                processSellers(state.items);
+                views.renderCurrentView();
+            });
+            
+            state.onChange('conversations', () => views.renderConversationsList());
+            
+            state.onChange('notifications', () => views.renderNotifications());
+            state.onChange('unreadNotifications', () => views.updateNotificationBadge());
+
+            state.onChange('filter', () => {
+                views.renderCurrentView();
+                views.updateFilterButtons();
+            });
+            
+            state.onChange('viewMode', () => {
+                views.renderCurrentView();
+                views.updateViewToggleButtons();
+            });
+
+            // Initial render
+            views.renderAuthUI();
+            views.renderCurrentView();
+            views.updateFilterButtons();
+            views.updateViewToggleButtons();
+        });
+    </script>
+</body>
+</html>
