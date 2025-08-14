@@ -12,7 +12,8 @@
     <title>סטייל מתגלגל</title>
     <!-- Link to the external manifest file -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png">
     <meta name="theme-color" content="#2c3e50">
     <style>
         :root {
@@ -872,10 +873,15 @@
         </div>
     </div>
     
-    <script type="module">
+    <!-- Using Firebase compat libraries for broader compatibility with the existing codebase style -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
+
+    <script>
         // ==================================================================
-        // шаг 1: הגדרות FIREBASE
-        // Your web app's Firebase configuration
+        // STEP 1: FIREBASE CONFIGURATION
         // ==================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDK0yKKGvh_I2xk-w4qmWrWBQrJmbCQkuA",
@@ -894,12 +900,6 @@
             uploadPreset: 'styleapp_upload' // Make sure this is an UNSIGNED preset
         };
 
-        // Import Firebase modules from CDN
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, orderBy, query, addDoc, updateDoc, deleteDoc, serverTimestamp, where, getDocs, setDoc, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js";
-        
         const ADMIN_EMAIL = "ohadf1976@gmail.com";
 
         // DOM element selectors
@@ -925,7 +925,6 @@
                 this.listeners[key].push(callback);
             },
             update(key, value) {
-                // console.log(`State update: ${key}`, value); // Reduced logging
                 this[key] = value;
                 if (this.listeners[key]) {
                     this.listeners[key].forEach(cb => cb(value));
@@ -1012,13 +1011,9 @@
         // --- FIREBASE & AUTHENTICATION ---
         async function initializeFirebase() {
             try {
-                if (!firebaseConfig || firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
-                    modals.showAlert("אנא הגדר את פרטי ה-Firebase שלך בקוד.", "שגיאת הגדרה");
-                    return;
-                }
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
+                app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
                 console.log("Firebase Initialized");
                 setupAuthObserver();
             } catch (e) {
@@ -1028,7 +1023,7 @@
         }
 
         function setupAuthObserver() {
-            onAuthStateChanged(auth, (user) => {
+            auth.onAuthStateChanged((user) => {
                 if (user && !user.isAnonymous) {
                     const { uid, displayName, email, photoURL } = user;
                     console.log(`%cLogged in User ID (uid): ${uid}`, 'color: blue; font-weight: bold;');
@@ -1047,7 +1042,7 @@
                     state.update('conversations', []);
                     state.update('notifications', []);
                     if (!auth.currentUser) {
-                        signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+                        auth.signInAnonymously().catch(err => console.error("Anonymous sign-in failed:", err));
                     }
                 }
                 fetchItemsFromFirestore();
@@ -1055,10 +1050,9 @@
         }
 
         async function signInWithGoogle() {
-            if (!auth) return modals.showAlert("Auth not ready.", "Error");
-            const provider = new GoogleAuthProvider();
+            const provider = new firebase.auth.GoogleAuthProvider();
             try {
-                await signInWithPopup(auth, provider);
+                await auth.signInWithPopup(provider);
                 modals.close('auth-modal');
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
@@ -1067,7 +1061,7 @@
         }
 
         function signOut() {
-            if (auth) firebaseSignOut(auth);
+            auth.signOut();
         }
 
         // --- DATA PROCESSING & FIRESTORE ---
@@ -1094,16 +1088,14 @@
             if (!db) return;
             if (unsubscribeFromItems) unsubscribeFromItems();
             
-            const itemsCollection = collection(db, "items");
-            const q = query(itemsCollection, orderBy("createdAt", "desc"));
-            
-            unsubscribeFromItems = onSnapshot(q, (snapshot) => {
-                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                state.update('items', items);
-            }, (err) => {
-                console.error("Firestore Error:", err);
-                modals.showAlert("Error fetching items.", "Error");
-            });
+            unsubscribeFromItems = db.collection("items").orderBy("createdAt", "desc")
+                .onSnapshot((snapshot) => {
+                    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    state.update('items', items);
+                }, (err) => {
+                    console.error("Firestore Error:", err);
+                    modals.showAlert("Error fetching items.", "Error");
+                });
         }
 
         async function uploadImagesToCloudinary(files) {
@@ -1122,13 +1114,7 @@
                     }
                     return response.json();
                 })
-                .then(data => {
-                    if (data.secure_url) {
-                        return data.secure_url;
-                    } else {
-                        throw new Error('Cloudinary upload failed with unexpected data structure');
-                    }
-                });
+                .then(data => data.secure_url);
             });
             return Promise.all(uploadPromises);
         }
@@ -1143,8 +1129,6 @@
             
             try {
                 const imageUrls = files.length > 0 ? await uploadImagesToCloudinary(files) : [];
-
-                const collectionRef = collection(db, "items");
                 const { id, ...data } = itemData;
                 const itemToSave = {
                     ...data,
@@ -1158,35 +1142,32 @@
                 }
 
                 if (id) {
-                    await updateDoc(doc(db, "items", id), itemToSave);
+                    await db.collection("items").doc(id).update(itemToSave);
                 } else {
                     if (!itemToSave.images || itemToSave.images.length === 0) {
                         modals.showAlert("חובה להעלות לפחות תמונה אחת.", "שגיאה");
                         modals.close('loading-modal');
                         return; 
                     }
-                    itemToSave.createdAt = serverTimestamp();
+                    itemToSave.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                     itemToSave.likes = [];
-                    await addDoc(collectionRef, itemToSave);
+                    await db.collection("items").add(itemToSave);
                 }
                 
                 modals.close('item-modal');
 
             } catch (error) {
                 console.error("Save Item Error:", error);
-                modals.showAlert(`שגיאה בהעלאת תמונות: ${error.message}`, "שגיאה");
+                modals.showAlert(`שגיאה בשמירת הפריט: ${error.message}`, "שגיאה");
             } finally {
                 modals.close('loading-modal');
             }
         }
 
         async function deleteItem(itemId) {
-            if (!db || !state.isAuthenticated) {
-                return modals.showAlert("You must be logged in.", "Error");
-            }
             modals.showConfirm("האם אתה בטוח שברצונך למחוק פריט זה?", async () => {
                 try {
-                    await deleteDoc(doc(db, "items", itemId));
+                    await db.collection("items").doc(itemId).delete();
                 } catch (error) {
                     console.error("Delete Item Error:", error);
                     modals.showAlert("Failed to delete item.", "Error");
@@ -1195,16 +1176,17 @@
         }
         
         async function toggleLike(itemId) {
-            if (!db || !state.isAuthenticated) return modals.open('auth-modal');
+            if (!state.isAuthenticated) return modals.open('auth-modal');
             
-            const itemRef = doc(db, "items", itemId);
+            const itemRef = db.collection("items").doc(itemId);
             const item = state.items.find(i => i.id === itemId);
             const userLiked = item.likes && item.likes.includes(state.user.uid);
+            const updateAction = userLiked 
+                ? firebase.firestore.FieldValue.arrayRemove(state.user.uid)
+                : firebase.firestore.FieldValue.arrayUnion(state.user.uid);
 
             try {
-                await updateDoc(itemRef, {
-                    likes: userLiked ? arrayRemove(state.user.uid) : arrayUnion(state.user.uid)
-                });
+                await itemRef.update({ likes: updateAction });
                 if (!userLiked && item.ownerId !== state.user.uid) {
                     createNotification(
                         item.ownerId,
@@ -1213,25 +1195,21 @@
                 }
             } catch (error) {
                 console.error("Error toggling like:", error);
-                modals.showAlert("לא ניתן היה לעדכן את הלייק.");
             }
         }
 
         async function reportItem(item) {
-            if (!db || !state.user) return modals.open('auth-modal');
-            
             modals.showConfirm("האם אתה בטוח שברצונך לדווח על פריט זה?", async () => {
                 try {
-                    await addDoc(collection(db, "reports"), {
+                    await db.collection("reports").add({
                         itemId: item.id,
                         itemTitle: item.title,
                         reportedBy: state.user.uid,
-                        reportedAt: serverTimestamp()
+                        reportedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     modals.showAlert("הדיווח שלך נשלח. תודה!");
                 } catch (error) {
                     console.error("Error reporting item:", error);
-                    modals.showAlert("שליחת הדיווח נכשלה.");
                 }
             });
         }
@@ -1240,10 +1218,9 @@
         async function createNotification(targetUserId, text, data = {}) {
             if (!db || !targetUserId || targetUserId === state.user.uid) return;
             try {
-                const notificationsCol = collection(db, `users/${targetUserId}/notifications`);
-                await addDoc(notificationsCol, {
+                await db.collection(`users/${targetUserId}/notifications`).add({
                     text,
-                    createdAt: serverTimestamp(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     read: false,
                     ...data
                 });
@@ -1257,30 +1234,23 @@
             if (!db || !state.user) return;
             if (unsubscribeFromNotifications) unsubscribeFromNotifications();
 
-            const q = query(collection(db, `users/${state.user.uid}/notifications`), orderBy("createdAt", "desc"));
-            unsubscribeFromNotifications = onSnapshot(q, (snapshot) => {
-                const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const unreadCount = notifications.filter(n => !n.read).length;
-                state.update('notifications', notifications);
-                state.update('unreadNotifications', unreadCount);
-            }, (error) => {
-                console.error("Error fetching notifications:", error);
-            });
+            unsubscribeFromNotifications = db.collection(`users/${state.user.uid}/notifications`).orderBy("createdAt", "desc")
+                .onSnapshot((snapshot) => {
+                    const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const unreadCount = notifications.filter(n => !n.read).length;
+                    state.update('notifications', notifications);
+                    state.update('unreadNotifications', unreadCount);
+                });
         }
 
         async function markNotificationsAsRead() {
             if (!db || !state.user || state.unreadNotifications === 0) return;
-            const unread = state.notifications.filter(n => !n.read);
-            const batch = writeBatch(db);
-            unread.forEach(n => {
-                const notifRef = doc(db, `users/${state.user.uid}/notifications`, n.id);
+            const batch = db.batch();
+            state.notifications.filter(n => !n.read).forEach(n => {
+                const notifRef = db.collection(`users/${state.user.uid}/notifications`).doc(n.id);
                 batch.update(notifRef, { read: true });
             });
-            try {
-                await batch.commit();
-            } catch (error) {
-                console.error("Error marking notifications as read:", error);
-            }
+            await batch.commit();
         }
 
         // --- MESSAGING ---
@@ -1289,11 +1259,11 @@
             if (!db || !state.user) return;
             if (unsubscribeFromConversations) unsubscribeFromConversations();
 
-            const q = query(collection(db, "conversations"), where(`participants.${state.user.uid}`, "==", true));
-            unsubscribeFromConversations = onSnapshot(q, (snapshot) => {
-                const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                state.update('conversations', conversations);
-            });
+            unsubscribeFromConversations = db.collection("conversations").where(`participants.${state.user.uid}`, "==", true)
+                .onSnapshot((snapshot) => {
+                    const conversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    state.update('conversations', conversations);
+                });
         }
 
         let unsubscribeFromMessages;
@@ -1310,26 +1280,25 @@
             const messagesContainer = a('#chat-messages');
             messagesContainer.innerHTML = '';
 
-            const q = query(collection(db, `conversations/${conversation.id}/messages`), orderBy("timestamp", "asc"));
-            unsubscribeFromMessages = onSnapshot(q, (snapshot) => {
-                messagesContainer.innerHTML = '';
-                snapshot.docs.forEach(doc => {
-                    const message = doc.data();
-                    const messageEl = document.createElement('div');
-                    messageEl.className = `message ${message.senderId === state.user.uid ? 'sent' : 'received'}`;
-                    messageEl.textContent = message.text;
-                    messagesContainer.prepend(messageEl);
+            unsubscribeFromMessages = db.collection(`conversations/${conversation.id}/messages`).orderBy("timestamp", "asc")
+                .onSnapshot((snapshot) => {
+                    messagesContainer.innerHTML = '';
+                    snapshot.docs.forEach(doc => {
+                        const message = doc.data();
+                        const messageEl = document.createElement('div');
+                        messageEl.className = `message ${message.senderId === state.user.uid ? 'sent' : 'received'}`;
+                        messageEl.textContent = message.text;
+                        messagesContainer.prepend(messageEl);
+                    });
                 });
-            });
         }
 
         async function sendMessage(conversationId, text) {
-            if (!db || !state.user) return;
-            const messagesCol = collection(db, `conversations/${conversationId}/messages`);
-            await addDoc(messagesCol, {
+            const messagesCol = db.collection(`conversations/${conversationId}/messages`);
+            await messagesCol.add({
                 text,
                 senderId: state.user.uid,
-                timestamp: serverTimestamp()
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             const convo = state.conversations.find(c => c.id === conversationId);
             if (convo) {
@@ -1348,68 +1317,55 @@
         }
 
         async function startOrGetConversation(item) {
-            if (!db || !state.user) return modals.open('auth-modal');
+            if (!state.isAuthenticated) return modals.open('auth-modal');
             
-            try {
-                const conversationId = [state.user.uid, item.ownerId].sort().join('_') + `_${item.id}`;
-                const conversationRef = doc(db, "conversations", conversationId);
-                
-                const participants = { [state.user.uid]: true, [item.ownerId]: true };
-                const participantDetails = {
-                    [state.user.uid]: { name: state.user.displayName, photo: state.user.photoURL },
-                    [item.ownerId]: { name: item.ownerName, photo: item.ownerPhoto }
-                };
+            const conversationId = [state.user.uid, item.ownerId].sort().join('_') + `_${item.id}`;
+            const conversationRef = db.collection("conversations").doc(conversationId);
+            
+            const participants = { [state.user.uid]: true, [item.ownerId]: true };
+            const participantDetails = {
+                [state.user.uid]: { name: state.user.displayName, photo: state.user.photoURL },
+                [item.ownerId]: { name: item.ownerName, photo: item.ownerPhoto }
+            };
 
-                await setDoc(conversationRef, {
-                    participants,
-                    participantDetails,
-                    itemId: item.id,
-                    itemTitle: item.title,
-                    itemImage: item.images ? item.images[0] : ''
-                }, { merge: true });
-                
-                openChat({ id: conversationId, participants, participantDetails });
-            } catch (error) {
-                console.error("Error starting conversation:", error);
-                modals.showAlert("לא ניתן היה להתחיל שיחה. נסה שוב מאוחר יותר.", "שגיאה");
-            }
+            await conversationRef.set({
+                participants,
+                participantDetails,
+                itemId: item.id,
+                itemTitle: item.title,
+                itemImage: item.images ? item.images[0] : ''
+            }, { merge: true });
+            
+            // CORRECTED: Pass the locally created objects, not the ref
+            openChat({ id: conversationId, participants, participantDetails });
         }
 
         // --- PUSH NOTIFICATIONS SETUP ---
         async function setupPushNotifications() {
-            if (!state.user || !('serviceWorker' in navigator)) {
+            if (!state.user || !('serviceWorker' in navigator) || !firebase.messaging.isSupported()) {
                 console.log("Push notifications not supported or user not logged in.");
                 return;
             }
 
-            const messaging = getMessaging(app);
+            const messaging = firebase.messaging();
 
             try {
                 const permission = await Notification.requestPermission();
-                console.log('Notification permission status:', permission);
-
                 if (permission === 'granted') {
-                    console.log('Notification permission granted.');
-
-                    const currentToken = await getToken(messaging, { vapidKey: 'BCjmc5eLD61zIrLtFJMbIaW-0m3t0n3rtyz1D1T_JUXayMu1yjWFgOMewdy7VvpG1EIfx478H5aukG-gWsg3SEU' });
-
+                    const currentToken = await messaging.getToken({ vapidKey: 'BCjmc5eLD61zIrLtFJMbIaW-0m3t0n3rtyz1D1T_JUXayMu1yjWFgOMewdy7VvpG1EIfx478H5aukG-gWsg3SEU' });
                     if (currentToken) {
-                        const userRef = doc(db, `users/${state.user.uid}`);
-                        await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
+                        const userRef = db.collection('users').doc(state.user.uid);
+                        await userRef.set({ fcmToken: currentToken }, { merge: true });
                         console.log('%cFCM Token saved:', 'color: green; font-weight: bold;', currentToken);
-                    } else {
-                        console.log('%cNo registration token available. Request permission to generate one.', 'color: orange;');
                     }
-                } else {
-                    console.log('%cUnable to get permission to notify.', 'color: orange;');
                 }
             } catch (error) {
                 console.error('%cAn error occurred while setting up push notifications.', 'color: red; font-weight: bold;', error);
             }
 
-            onMessage(messaging, (payload) => {
+            messaging.onMessage((payload) => {
                 console.log('Message received in foreground. ', payload);
-                // Optionally show an in-app notification banner
+                modals.showAlert(`התראה חדשה: ${payload.notification.body}`, payload.notification.title);
             });
         }
 
@@ -2047,4 +2003,4 @@
         });
     </script>
 </body>
-</html
+</html>
