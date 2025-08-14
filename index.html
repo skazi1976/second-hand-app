@@ -925,7 +925,7 @@
                 this.listeners[key].push(callback);
             },
             update(key, value) {
-                console.log(`State update: ${key}`, value);
+                // console.log(`State update: ${key}`, value); // Reduced logging
                 this[key] = value;
                 if (this.listeners[key]) {
                     this.listeners[key].forEach(cb => cb(value));
@@ -967,7 +967,6 @@
                     if (e.target.classList.contains('modal')) {
                         this.close(e.target.id);
                     }
-                    // Close notifications dropdown if clicked outside
                     const dropdown = a('#notifications-dropdown');
                     if (dropdown && !dropdown.classList.contains('hidden') && !a('#notification-container').contains(e.target)) {
                         dropdown.classList.add('hidden');
@@ -1032,13 +1031,13 @@
             onAuthStateChanged(auth, (user) => {
                 if (user && !user.isAnonymous) {
                     const { uid, displayName, email, photoURL } = user;
-                    console.log(`Logged in User ID (uid): ${uid}`); // For debugging
+                    console.log(`%cLogged in User ID (uid): ${uid}`, 'color: blue; font-weight: bold;');
                     state.update('user', { uid, displayName, email, photoURL });
                     state.update('isAuthenticated', true);
                     state.update('isAdmin', email === ADMIN_EMAIL);
                     fetchConversations();
                     fetchNotifications();
-                    setupPushNotifications(); // Request permission after user logs in
+                    setupPushNotifications();
                 } else {
                     state.update('user', null);
                     state.update('isAuthenticated', false);
@@ -1397,15 +1396,15 @@
                     if (currentToken) {
                         const userRef = doc(db, `users/${state.user.uid}`);
                         await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
-                        console.log('FCM Token saved:', currentToken);
+                        console.log('%cFCM Token saved:', 'color: green; font-weight: bold;', currentToken);
                     } else {
-                        console.log('No registration token available. Request permission to generate one.');
+                        console.log('%cNo registration token available. Request permission to generate one.', 'color: orange;');
                     }
                 } else {
-                    console.log('Unable to get permission to notify.');
+                    console.log('%cUnable to get permission to notify.', 'color: orange;');
                 }
             } catch (error) {
-                console.error('An error occurred while setting up push notifications.', error);
+                console.error('%cAn error occurred while setting up push notifications.', 'color: red; font-weight: bold;', error);
             }
 
             onMessage(messaging, (payload) => {
@@ -1973,9 +1972,25 @@
             }
         };
 
+        // --- DIAGNOSTIC FUNCTION ---
+        async function verifyServiceWorkerExists() {
+            try {
+                const response = await fetch('/firebase-messaging-sw.js');
+                if (response.ok) {
+                    console.log('%c✅ SUCCESS: firebase-messaging-sw.js file found!', 'color: green; font-weight: bold;');
+                } else {
+                    console.error(`%c❌ ERROR: firebase-messaging-sw.js file not found. Status: ${response.status}`, 'color: red; font-weight: bold;');
+                    modals.showAlert('קובץ חיוני להתראות (Service Worker) חסר. ודא שהקובץ firebase-messaging-sw.js נמצא בתיקייה הראשית של הפרויקט שלך.', 'שגיאת הגדרה קריטית');
+                }
+            } catch (error) {
+                console.error('%c❌ ERROR: Could not fetch firebase-messaging-sw.js.', 'color: red; font-weight: bold;', error);
+            }
+        }
+
         // --- APP INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             console.log("App starting...");
+            verifyServiceWorkerExists();
             initializeFirebase();
             modals.setup();
             events.setup();
