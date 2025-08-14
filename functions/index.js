@@ -27,22 +27,30 @@ exports.sendPushNotification = onDocumentCreated("users/{userId}/notifications/{
       return;
     }
 
+    // "data-only" payload to ensure the service worker always handles it.
     const payload = {
-      notification: {
+      data: {
         title: "התראה חדשה בסטייל מתגלגל!",
         body: notificationData.text,
-        icon: "https://raw.githubusercontent.com/skazi1976/second-hand-app/main/ChatGPT%20Image%20Jul%2023%2C%202025%2C%2010_44_20%20AM%20copy.png",
-      },
-      data: {
-        // Pass notification data to the client
-        ...notificationData
+        icon: "/images/icons/icon-192x192.png",
+        badge: "/images/icons/icon-192x192.png", // Added for better mobile UX
+        url: notificationData.url || '/' // URL to open on click
       }
     };
 
     try {
-      const response = await getMessaging().sendToDevice(fcmToken, payload);
+      const message = {
+        token: fcmToken,
+        data: payload.data
+      };
+      const response = await getMessaging().send(message);
       console.log("Successfully sent message:", response);
     } catch (error) {
       console.log("Error sending message:", error);
+      // Optional: Clean up invalid tokens
+      if (error.code === 'messaging/registration-token-not-registered') {
+        await userDoc.ref.update({ fcmToken: null });
+        console.log(`Removed invalid token for user: ${userId}`);
+      }
     }
 });
